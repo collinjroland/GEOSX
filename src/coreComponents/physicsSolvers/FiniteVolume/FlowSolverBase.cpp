@@ -24,6 +24,7 @@
 
 #include "managers/DomainPartition.hpp"
 #include "mesh/MeshForLoopInterface.hpp"
+#include "mesh/AggregateElementSubRegion.hpp"
 
 namespace geosx
 {
@@ -84,6 +85,17 @@ void FlowSolverBase::RegisterDataOnMesh( ManagedGroup * const MeshBodies )
       elementSubRegion->template RegisterViewWrapper< array1d<real64> >( viewKeyStruct::referencePorosityString )->setPlotLevel(PlotLevel::LEVEL_0);
       elementSubRegion->template RegisterViewWrapper< array1d<R1Tensor> >( viewKeyStruct::permeabilityString )->setPlotLevel(PlotLevel::LEVEL_0);
       elementSubRegion->template RegisterViewWrapper< array1d<real64> >( viewKeyStruct::gravityDepthString )->setApplyDefaultValue( 0.0 );
+    });
+
+    elemManager->forElementRegions([&]( auto * const elementRegion) -> void
+    {
+      AggregateElementSubRegion * const aggregateElement = elementRegion->GetSubRegion("coarse")-> template group_cast< AggregateElementSubRegion * >();
+      if( aggregateElement != nullptr )
+      {
+        aggregateElement->template RegisterViewWrapper< array1d<real64> >( viewKeyStruct::referencePorosityString)->setPlotLevel(PlotLevel::LEVEL_0);
+        aggregateElement->template RegisterViewWrapper< array1d<R1Tensor> >( viewKeyStruct::permeabilityString )->setPlotLevel(PlotLevel::LEVEL_0); 
+        aggregateElement->template RegisterViewWrapper< array1d<real64> >( viewKeyStruct::gravityDepthString )->setApplyDefaultValue( 0.0 );
+      }
     });
 
     FaceManager * const faceManager = meshLevel->getFaceManager();
