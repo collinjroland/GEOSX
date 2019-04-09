@@ -397,6 +397,111 @@ public:
 
   string_array const & getTargetRegions() const {return m_targetRegions;}
 
+  // below is some helper stuff for applyToSubRegions() that should probably be elsewhere
+
+  template<typename T, bool COND>
+  struct add_const_if
+  {
+    using type = typename std::conditional<COND, typename std::add_const<T>::type, T>::type;
+  };
+
+  template<typename T, bool COND>
+  using add_const_if_t = typename add_const_if<T, COND>::type;
+
+  template<bool CONST>
+  using SubregionFunc = std::function<void ( add_const_if_t<ElementSubRegionBase, CONST> * )>;
+
+  template<bool CONST>
+  using SubregionFuncIndex = std::function<void ( localIndex, localIndex )>;
+
+  template<bool CONST>
+  using SubregionFuncComplete = std::function<void ( localIndex, localIndex,
+                                                     add_const_if_t<ElementRegion, CONST> *,
+                                                     add_const_if_t<ElementSubRegionBase, CONST> * )>;
+
+  template<typename T, typename LAMBDA, template<bool> class SIGNATURE>
+  struct callable_as
+  {
+    static bool constexpr value = std::is_convertible<LAMBDA, SIGNATURE<std::is_const<T>::value>>::value;
+  };
+
+  // The idea is you can call applyToSubRegions() with any supported lambda type (see signatures above)
+  // and it does the right thing, also takes care of const/non-const mesh (lambda must be compatible)
+
+  template<typename MESH, typename LAMBDA>
+  typename std::enable_if<callable_as<MESH, LAMBDA, SubregionFunc>::value, void>::type
+  applyToSubRegions( MESH * const mesh, LAMBDA && lambda ) const
+  {
+    static_assert( std::is_same<typename std::remove_cv<MESH>::type, MeshLevel>::value, "Invalid MESH type" );
+
+    auto * const elemManager = mesh->getElemManager();
+    if (m_targetRegions.empty())
+    {
+      elemManager->forElementSubRegions( std::forward<LAMBDA>(lambda) );
+    }
+    else
+    {
+      for (string const & regionName : m_targetRegions)
+      {
+        elemManager->GetRegion( regionName )->forElementSubRegions( std::forward<LAMBDA>(lambda) );
+      }
+    }
+  }
+
+  template<typename MESH, typename LAMBDA>
+  typename std::enable_if<callable_as<MESH, LAMBDA, SubregionFuncIndex>::value, void>::type
+  applyToSubRegions( MESH * const mesh, LAMBDA && lambda ) const
+  {
+    static_assert( std::is_same<typename std::remove_cv<MESH>::type, MeshLevel>::value, "Invalid MESH type" );
+
+    auto * const elemManager = mesh->getElemManager();
+    if (m_targetRegions.empty())
+    {
+      elemManager->forElementSubRegionsComplete( [&] ( localIndex er, localIndex esr,
+                                                       auto * const region,
+                                                       auto * const subRegion )
+      {
+        lambda( er, esr );
+      } );
+    }
+    else
+    {
+      for (string const & regionName : m_targetRegions)
+      {
+        auto * const region = elemManager->GetRegion( regionName );
+        region->forElementSubRegionsIndex( [&] ( localIndex const esr,
+                                                 auto * const subRegion )
+        {
+          lambda( region->getIndexInParent(), esr );
+        } );
+      }
+    }
+  }
+
+  template<typename MESH, typename LAMBDA>
+  typename std::enable_if<callable_as<MESH, LAMBDA, SubregionFuncComplete>::value, void>::type
+  applyToSubRegions( MESH * const mesh, LAMBDA && lambda ) const
+  {
+    static_assert( std::is_same<typename std::remove_cv<MESH>::type, MeshLevel>::value, "Invalid MESH type" );
+
+    auto * const elemManager = mesh->getElemManager();
+    if (m_targetRegions.empty())
+    {
+      elemManager->forElementSubRegionsComplete( std::forward<LAMBDA>(lambda) );
+    }
+    else
+    {
+      for (string const & regionName : m_targetRegions)
+      {
+        auto * const region = elemManager->GetRegion( regionName );
+        region->forElementSubRegionsIndex( [&] ( localIndex const esr, auto * const subRegion )
+        {
+          lambda( region->getIndexInParent(), esr, region, subRegion );
+        } );
+      }
+    }
+  }
+
 protected:
   /// This is a wrapper for the linear solver package
   systemSolverInterface::LinearSolverWrapper m_linearSolverWrapper;
@@ -406,10 +511,10 @@ protected:
   string getDiscretizationName() const {return m_discretizationName;}
 
   template<typename BASETYPE>
-  BASETYPE const * GetConstitutiveModel( dataRepository::ManagedGroup const * dataGroup, string const & name );
+  static BASETYPE const * GetConstitutiveModel( dataRepository::ManagedGroup const * dataGroup, string const & name );
 
   template<typename BASETYPE>
-  BASETYPE * GetConstitutiveModel( dataRepository::ManagedGroup * dataGroup, string const & name );
+  static BASETYPE * GetConstitutiveModel( dataRepository::ManagedGroup * dataGroup, string const & name );
 
   integer m_verboseLevel = 0;
   R1Tensor m_gravityVector;
@@ -453,44 +558,6 @@ BASETYPE * SolverBase::GetConstitutiveModel( dataRepository::ManagedGroup * data
   GEOS_ERROR_IF( model == nullptr, "Target group does not contain model " << name );
 
   return model;
-}
-
-template<typename LAMBDA>
-typename std::enable_if<std::is_convertible<LAMBDA,
-  std::function<void(localIndex,localIndex,ElementRegion const *,CellElementSubRegion const *)>>::value, void>::type
-applyToSubRegions( DomainPartition const * const domain, LAMBDA && lambda )
-{
-  MeshLevel const * const mesh = domain->getMeshBody(0)->getMeshLevel(0);
-  ElementRegionManager const * const elemManager = mesh->getElemManager();
-  elemManager->forElementSubRegionsComplete( lambda );
-}
-
-template<typename LAMBDA>
-typename std::enable_if<std::is_convertible<LAMBDA,
-  std::function<void(localIndex,localIndex,ElementRegion *,CellElementSubRegion *)>>::value, void>::type
-applyToSubRegions( DomainPartition * const domain, LAMBDA && lambda )
-{
-  MeshLevel * const mesh = domain->getMeshBody(0)->getMeshLevel(0);
-  ElementRegionManager * const elemManager = mesh->getElemManager();
-  elemManager->forElementSubRegionsComplete( lambda );
-}
-
-template<typename LAMBDA>
-typename std::enable_if<std::is_convertible<LAMBDA,std::function<void(CellElementSubRegion const *)>>::value, void>::type
-applyToSubRegions( DomainPartition const * const domain, LAMBDA && lambda )
-{
-  MeshLevel const * const mesh = domain->getMeshBody(0)->getMeshLevel(0);
-  ElementRegionManager const * const elemManager = mesh->getElemManager();
-  elemManager->forElementSubRegions( lambda );
-}
-
-template<typename LAMBDA>
-typename std::enable_if<std::is_convertible<LAMBDA,std::function<void(CellElementSubRegion *)>>::value, void>::type
-applyToSubRegions( DomainPartition * const domain, LAMBDA && lambda )
-{
-  MeshLevel * const mesh = domain->getMeshBody(0)->getMeshLevel(0);
-  ElementRegionManager * const elemManager = mesh->getElemManager();
-  elemManager->forElementSubRegions( lambda );
 }
 
 } /* namespace ANST */
