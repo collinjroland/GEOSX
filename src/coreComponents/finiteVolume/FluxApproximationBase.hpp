@@ -174,6 +174,7 @@ void FluxApproximationBase::forCellStencils(LAMBDA && lambda) const
 {
   this->forViewWrappersByType<CellStencil>([&] (auto const & vw) -> void
   {
+    std::cout << vw.getName() << std::endl;
     lambda(vw.reference());
   });
 }

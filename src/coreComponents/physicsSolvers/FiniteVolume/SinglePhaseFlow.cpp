@@ -80,6 +80,18 @@ void SinglePhaseFlow::RegisterDataOnMesh(ManagedGroup * const MeshBodies)
       subRegion->RegisterViewWrapper< array1d<globalIndex> >( viewKeyStruct::blockLocalDofNumberString );
     } );
 
+    meshLevel->getElemManager()->forElementSubRegions<AggregateElementSubRegion>( [&] (  auto * const aggregateRegion) 
+    {
+      std::cout <<"register spf mesh "<<  aggregateRegion->getName() << std::endl;
+      aggregateRegion->template RegisterViewWrapper< array1d<real64> >( viewKeyStruct::pressureString )->setPlotLevel(PlotLevel::LEVEL_0);
+      aggregateRegion->template RegisterViewWrapper< array1d<real64> >( viewKeyStruct::deltaPressureString );
+      aggregateRegion->template RegisterViewWrapper< array1d<real64> >( viewKeyStruct::deltaVolumeString );
+      aggregateRegion->template RegisterViewWrapper< array1d<real64> >( viewKeyStruct::densityString );
+      aggregateRegion->template RegisterViewWrapper< array1d<real64> >( viewKeyStruct::porosityString )->setPlotLevel(PlotLevel::LEVEL_1);
+      aggregateRegion->template RegisterViewWrapper< array1d<real64> >( viewKeyStruct::oldPorosityString );
+      aggregateRegion->template RegisterViewWrapper< array1d<globalIndex> >( viewKeyStruct::blockLocalDofNumberString );
+    });
+
     // TODO restrict this to boundary sets
     FaceManager * const faceManager = meshLevel->getFaceManager();
     {
@@ -166,6 +178,7 @@ void SinglePhaseFlow::InitializePostInitialConditions_PreSubGroups( ManagedGroup
                                  ElementRegion * const region,
                                  ElementSubRegionBase * const subRegion )
   {
+    std::cout << subRegion->getName() << std::endl;
     UpdateState( subRegion );
 
     arrayView1d<real64 const> const & poroRef = m_porosityRef[er][esr];
@@ -235,6 +248,7 @@ void SinglePhaseFlow::ImplicitStepSetup( real64 const& time_n,
                                  ElementRegion * const region,
                                  ElementSubRegionBase * const subRegion )
   {
+    std::cout << subRegion->getName() << std::endl;
     arrayView2d<real64 const> const & dens = m_density[er][esr][m_fluidIndex];
     arrayView1d<real64 const> const & poro = m_porosity[er][esr];
 
@@ -263,6 +277,13 @@ void SinglePhaseFlow::ImplicitStepComplete( real64 const & time_n,
   GEOSX_MARK_FUNCTION;
 
   MeshLevel * const mesh = domain->getMeshBodies()->GetGroup<MeshBody>(0)->getMeshLevel(0);
+  auto elemManager = mesh->getElemManager();
+  auto reg0 = elemManager->GetRegion(0);
+  auto coarseElementSub  = reg0->GetSubRegion("coarse");
+  if(coarseElementSub != nullptr )
+  {
+    std::cout << "coarse elem exists" << std::endl;
+  }
 
   applyToSubRegions( mesh, [&] ( localIndex er, localIndex esr,
                                  ElementRegion * const region,
@@ -438,6 +459,7 @@ void SinglePhaseFlow::SetSparsityPattern( DomainPartition const * const domain,
 
   fluxApprox->forCellStencils( [&] ( FluxApproximationBase::CellStencil const & stencilCollection )
   {
+    std::cout << "FOR CELL STENCIL " << std::endl;
     stencilCollection.forAll( GEOSX_LAMBDA ( StencilCollection<CellDescriptor, real64>::Accessor stencil )
     {
       localIndex const stencilSize = stencil.size();

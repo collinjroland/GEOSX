@@ -2,6 +2,7 @@
 # Specify all headers
 #
 set( finiteVolume_headers
+     AggregateStencil.hpp
      FiniteVolumeManager.hpp
      FluxApproximationBase.hpp
      TwoPointFluxApproximation.hpp
@@ -11,6 +12,7 @@ set( finiteVolume_headers
 # Specify all sources
 #
 set( finiteVolume_sources
+     AggregateStencil.cpp
      FiniteVolumeManager.cpp
      FluxApproximationBase.cpp
      TwoPointFluxApproximation.cpp

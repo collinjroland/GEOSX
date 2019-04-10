@@ -29,6 +29,7 @@
 #include "common/DataTypes.hpp"
 #include "managers/DomainPartition.hpp"
 #include "mesh/MeshBody.hpp"
+#include "mesh/AggregateElementSubRegion.hpp"
 #include "systemSolverInterface/SystemSolverParameters.hpp"
 #include "systemSolverInterface/LinearSolverWrapper.hpp"
 
@@ -434,16 +435,34 @@ public:
   {
     static_assert( std::is_same<typename std::remove_cv<MESH>::type, MeshLevel>::value, "Invalid MESH type" );
 
+    std::cout << 1 << std::endl;
     auto * const elemManager = mesh->getElemManager();
-    if (m_targetRegions.empty())
+    if( !m_aggregateMode )
     {
-      elemManager->forElementSubRegions( std::forward<LAMBDA>(lambda) );
+      if (m_targetRegions.empty())
+      {
+        elemManager->forElementSubRegions( std::forward<LAMBDA>(lambda) );
+      }
+      else
+      {
+        for (string const & regionName : m_targetRegions)
+        {
+          elemManager->GetRegion( regionName )->forElementSubRegions( std::forward<LAMBDA>(lambda) );
+        }
+      }
     }
     else
     {
-      for (string const & regionName : m_targetRegions)
+      if (m_targetRegions.empty())
       {
-        elemManager->GetRegion( regionName )->forElementSubRegions( std::forward<LAMBDA>(lambda) );
+        elemManager->template forElementSubRegions< AggregateElementSubRegion >( std::forward<LAMBDA>(lambda) );
+      }
+      else
+      {
+        for (string const & regionName : m_targetRegions)
+        {
+          elemManager->GetRegion( regionName )->template forElementSubRegions< AggregateElementSubRegion >( std::forward<LAMBDA>(lambda) );
+        }
       }
     }
   }
@@ -452,6 +471,7 @@ public:
   typename std::enable_if<callable_as<MESH, LAMBDA, SubregionFuncIndex>::value, void>::type
   applyToSubRegions( MESH * const mesh, LAMBDA && lambda ) const
   {
+    std::cout << 2 << std::endl;
     static_assert( std::is_same<typename std::remove_cv<MESH>::type, MeshLevel>::value, "Invalid MESH type" );
 
     auto * const elemManager = mesh->getElemManager();
@@ -483,6 +503,7 @@ public:
   applyToSubRegions( MESH * const mesh, LAMBDA && lambda ) const
   {
     static_assert( std::is_same<typename std::remove_cv<MESH>::type, MeshLevel>::value, "Invalid MESH type" );
+    std::cout << 3 << std::endl;
 
     auto * const elemManager = mesh->getElemManager();
     if (m_targetRegions.empty())
@@ -527,6 +548,8 @@ protected:
   string m_discretizationName;
 
   string_array m_targetRegions;
+
+  bool m_aggregateMode;
 
 
 //  localIndex_array m_blockLocalDofNumber;
