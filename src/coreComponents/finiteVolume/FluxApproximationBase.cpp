@@ -65,9 +65,6 @@ FluxApproximationBase::FluxApproximationBase(string const &name, ManagedGroup *c
   RegisterViewWrapper<CellStencil>(viewKeyStruct::fractureStencilString)->
     setRestartFlags(RestartFlags::NO_WRITE);
 
-  RegisterViewWrapper<CellStencil>("coarseStencil")->
-    setRestartFlags(RestartFlags::NO_WRITE);
-
 }
 
 FluxApproximationBase::CatalogInterface::CatalogType &

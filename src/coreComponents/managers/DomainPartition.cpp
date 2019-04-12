@@ -27,7 +27,11 @@
 
 #include "fileIO/silo/SiloFile.hpp"
 
+#include "mesh/AggregateElementSubRegion.hpp"
+
 #include "common/TimingMacros.hpp"
+
+#include "meshUtilities/SimpleGeometricObjects/SimpleGeometricObjectBase.hpp"
 
 #include "common/DataTypes.hpp"
 #include "MPI_Communications/NeighborCommunicator.hpp"
@@ -113,7 +117,7 @@ void DomainPartition::SetMaps(  )
   // }
 }
 
-void DomainPartition::GenerateSets(  )
+void DomainPartition::GenerateSets()
 {
   MeshLevel * const mesh = this->getMeshBody(0)->getMeshLevel(0);
   ManagedGroup * nodeManager = mesh->getNodeManager();
@@ -155,6 +159,7 @@ void DomainPartition::GenerateSets(  )
 
       for( auto & setName : setNames )
       {
+        std::cout << "setname first pass : " << setName << std::endl;
 
         set<localIndex> & targetSet = elementSets->RegisterViewWrapper< set<localIndex> >(setName)->reference();
         for( localIndex k = 0 ; k < subRegion->size() ; ++k )
@@ -177,6 +182,54 @@ void DomainPartition::GenerateSets(  )
       }
     }
   }
+}
+
+void DomainPartition::GenerateSetsOnAggregates( GeometricObjectManager const * const geometricManager )
+{
+  MeshLevel * const mesh = this->getMeshBody(0)->getMeshLevel(0);
+  ManagedGroup * nodeManager = mesh->getNodeManager();
+  dataRepository::ManagedGroup const * nodeSets = nodeManager->GetGroup(ObjectManagerBase::groupKeyStruct::setsString);
+
+  ElementRegionManager * elementRegionManager = mesh->getElemManager();
+
+  std::map< string, integer_array > nodeInSet;
+  string_array setNames;
+
+  for( auto & viewWrapper : nodeSets->wrappers() )
+  {
+    string name = viewWrapper.second->getName();
+    nodeInSet[name].resize( nodeManager->size() );
+    nodeInSet[name] = 0;
+    ViewWrapper<set<localIndex>> const * const setPtr = nodeSets->getWrapper<set<localIndex>>(name);
+    if( setPtr!=nullptr )
+    {
+      setNames.push_back(name);
+    }
+  }
+  elementRegionManager->forElementSubRegions< AggregateElementSubRegion >( [&] (  auto * const aggregateRegion)
+  {
+  std::cout << "Attempt to generate set on aggregate region " << aggregateRegion->getName() << std::endl;
+    for( auto & setName : setNames )
+    {
+        std::cout << "setname seconds pass : " << setName << std::endl;
+
+      dataRepository::ManagedGroup * elementSets = aggregateRegion->sets();
+      set<localIndex> & targetSet = elementSets->RegisterViewWrapper< set<localIndex> >(setName)->reference();
+      SimpleGeometricObjectBase const * const object = geometricManager->GetGroup<SimpleGeometricObjectBase>(setName);
+      if( object != nullptr )
+      {
+        array1d< R1Tensor> aggregateCenters = aggregateRegion->getElementCenter();
+        for( localIndex k = 0 ; k < aggregateRegion->size() ; ++k )
+        {
+          if( object->IsCoordInObject(aggregateCenters[k]) )
+          {
+            std::cout << "found something inside " << std::endl;
+            targetSet.insert(k);
+          }
+        }
+      }
+    }
+  });
 }
 
 

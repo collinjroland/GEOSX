@@ -35,6 +35,7 @@
 //#include "legacy/ArrayT/bufvector.h"
 #include "ElementRegion.hpp"
 #include "fileIO/schema/SchemaUtilities.hpp"
+#include "meshUtilities/SimpleGeometricObjects/GeometricObjectManager.hpp"
 
 namespace geosx
 {
@@ -100,7 +101,8 @@ public:
 
   void GenerateFractureMesh( FaceManager const * const faceManager );
 
-  void GenerateAggregates( FaceManager const * const faceManager, NodeManager const * const nodeManager );
+  void GenerateAggregates( FaceManager const * const faceManager,
+                           NodeManager const * const nodeManager );
 
   virtual ManagedGroup * CreateChild( string const & childKey, string const & childName ) override;
 //  virtual void ReadXMLsub( xmlWrapper::xmlNode const & targetNode ) override;

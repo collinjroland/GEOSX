@@ -195,10 +195,10 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
       CellDescriptor const & cell2 = stencil.connectedIndex(1);
       localIndex aggregateNumber1 = fineToCoarse[cell1.index];
       localIndex aggregateNumber2 = fineToCoarse[cell2.index];
-      if( aggregateNumber1 != aggregateNumber2 && interfaces.find(std::make_pair(aggregateNumber1,aggregateNumber2)) == interfaces.end() ) // We find two adjacent aggregates TODO maybe find a clever way to iterate between coarse interfaces ?
+      if( aggregateNumber1 != aggregateNumber2 && interfaces.find(std::make_pair(aggregateNumber1,aggregateNumber2)) == interfaces.end()  && interfaces.find(std::make_pair(aggregateNumber2,aggregateNumber1)) == interfaces.end()) // We find two adjacent aggregates TODO maybe find a clever way to iterate between coarse interfaces ?
       {
-        stencilCells[0] = { cell1.region, 0, aggregateNumber1 }; // We can consider here that there is only 1 subregion
-        stencilCells[1] = { cell2.region, 0, aggregateNumber2 };
+        stencilCells[0] = { cell1.region, 1, aggregateNumber1 }; // We can consider here that there is only 1 subregion
+        stencilCells[1] = { cell2.region, 1, aggregateNumber2 };
 
         // Now we compute the transmissibilities
         R1Tensor barycenter1 = aggregateElement->getElementCenter()[aggregateNumber1];
@@ -257,8 +257,6 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
         int lwork = static_cast< int > ( rwork1 );
         real64 * rwork = new real64[lwork];
         lapack.GELSS(systemSize,4,1,A.values(),A.stride(),pTarget.values(),pTarget.stride(),svd,-1,&rank,rwork,lwork,&info);
-        pTarget.print(std::cout);
-        GEOS_ERROR("stop");
 
         // Computation of coarse-grid flow parameters
         real64 coarseAveragePressure1 = 0.;
@@ -286,6 +284,8 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
 
         coarseAveragePressure1 /= aggregateElement->getElementVolume()[aggregateNumber1];
         coarseAveragePressure2 /= aggregateElement->getElementVolume()[aggregateNumber2];
+        std::cout << "volume 1: "<< aggregateElement->getElementVolume()[aggregateNumber1] << std::endl;
+        std::cout << "volume 2: "<< aggregateElement->getElementVolume()[aggregateNumber2] << std::endl;
 
         fineStencil.forAll( [&] ( StencilCollection<CellDescriptor, real64>::Accessor stencilBis )
         {
@@ -317,13 +317,20 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
         });
         for( localIndex i = 0; i < 2; i++ )
         {
-          stencilWeights[i] = coarseFlowRate[i] / ( coarseAveragePressure1 - coarseAveragePressure2 ); // TODO sign ?
+          stencilWeights[i] = std::fabs(coarseFlowRate[i] / ( coarseAveragePressure1 - coarseAveragePressure2 )) * std::pow(-1,i) ; // TODO sign ?
         }
+        std::cout << std::endl;
         coarseStencil.add(stencilCells.data(), stencilCells, stencilWeights, 0.);
         interfaces.insert(std::make_pair(aggregateNumber1, aggregateNumber2));
+        interfaces.insert(std::make_pair(aggregateNumber2, aggregateNumber1));
+        std::cout << "ON PASSE "<< std::endl;
       }
     }
 });
+
+std::cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" << std::endl;
+std::cout << "interface size "<< interfaces.size() << std::endl;
+std::cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" << std::endl;
 }
 
 

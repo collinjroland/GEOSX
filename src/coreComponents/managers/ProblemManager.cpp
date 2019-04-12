@@ -786,6 +786,7 @@ void ProblemManager::GenerateMesh()
       });
 
       elemManager->GenerateAggregates( faceManager, nodeManager );
+      domain->GenerateSetsOnAggregates( geometricObjects );
 //      elemManager->forElementSubRegions([&](CellBlockSubRegion * const subRegion)->void
 //      {
 //        subRegion->nodeList().SetRelatedObject(nodeManager);
@@ -845,8 +846,9 @@ void ProblemManager::ApplyNumericalMethods()
             string_array const & materialList = elemRegion->getMaterialList();
             localIndex quadratureSize = 1;
 
-            elemRegion->forElementSubRegions([&]( auto * const subRegion )->void
+            elemRegion->forElementSubRegions< CellElementSubRegion >([&]( auto * const subRegion )->void
             {
+            std::cout << "PROBLEM MANAGER SET REGION :  " << subRegion->getName()  << std::endl;
               if( feDiscretization != nullptr )
               {
                 feDiscretization->ApplySpaceToTargetCells(subRegion);
@@ -856,6 +858,20 @@ void ProblemManager::ApplyNumericalMethods()
               for( auto & materialName : materialList )
               {
                 constitutiveManager->HangConstitutiveRelation( materialName, subRegion, quadratureSize );
+              }
+            });
+            elemRegion->forElementSubRegions< AggregateElementSubRegion >([&]( auto * const subRegion )->void
+            {
+            std::cout << "PROBLEM MANAGER SET REGION :  " << subRegion->getName()  << std::endl;
+              if( feDiscretization != nullptr )
+              {
+                feDiscretization->ApplySpaceToTargetCells(subRegion);
+                feDiscretization->CalculateShapeFunctionGradients( X, subRegion);
+                quadratureSize = feDiscretization->getNumberOfQuadraturePoints();
+              }
+              for( auto & materialName : materialList )
+              {
+                constitutiveManager->HangConstitutiveRelation( materialName +"1", subRegion, quadratureSize );
               }
             });
           }

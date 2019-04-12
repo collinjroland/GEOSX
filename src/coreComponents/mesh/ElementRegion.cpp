@@ -248,7 +248,7 @@ void ElementRegion::GenerateAggregates( FaceManager const * const faceManager, N
   }
   for (localIndex kf = 0; kf < faceManager->size(); ++kf)
   {
-    if( elemRegionList[kf][0] == regionIndex && elemRegionList[kf][1] == regionIndex && elemRegionList[kf][0] )
+    if( elemRegionList[kf][0] == regionIndex && elemRegionList[kf][1] == regionIndex )
     {
       localIndex const esr0 = elemSubRegionList[kf][0];
       idx_t const ei0  = integer_conversion< idx_t >( elemList[kf][0] + offsetSubRegions[esr0] );
@@ -256,14 +256,42 @@ void ElementRegion::GenerateAggregates( FaceManager const * const faceManager, N
       idx_t const ei1  = integer_conversion< idx_t >( elemList[kf][1] + offsetSubRegions[esr1] );
       graph.insertNonZero(ei0, ei1);
       graph.insertNonZero(ei1, ei0);
+      std::cout << ei0 << " connectted to " << ei1 << std::endl;
       nbConnections++;
     }
   }
 
+  graph.compress();
+
+    // METIS graph definition
+  array1d< idx_t > xadjs(nnodes + 1);
+  array1d< idx_t> adjncy(nbConnections*2);
+  // Fill the METIS graph structure
+  xadjs[0] = integer_conversion< idx_t >(0);
+  for( localIndex row = 0; row < nbCellElements; ++row )
+  {
+    localIndex numNonZeros = graph.numNonZeros( row );
+    auto columns = graph.getColumns( row );
+    xadjs[integer_conversion<idx_t>(row+1)] = xadjs[row] + integer_conversion< idx_t >( numNonZeros ) ;
+    for(localIndex col = 0; col < numNonZeros; col++)
+    {
+      adjncy[xadjs[row]+col] = integer_conversion< idx_t >( columns[col] );
+    }
+  }
+
+  for(int i = 0 ; i < nnodes + 1 ; i++)
+  {
+    std::cout << xadjs[i] << " " << graph.getOffsets()[i] << std::endl;
+  }
   // METIS partitionning
-  METIS_PartGraphRecursive( &nnodes, &nconst, graph.getOffsets(), graph.getColumns(), nullptr, nullptr, nullptr,
+  METIS_PartGraphRecursive( &nnodes, &nconst, xadjs, adjncy, nullptr, nullptr, nullptr,
                             &nparts, nullptr, nullptr, options, &objval, parts.data() );
 
+  std::cout << "debug graph " << std::endl;
+  for(int i = 0 ; i < parts.size() ;i++)
+  {
+     std::cout << i << " " << parts[i] << std::endl;
+  }
   // Compute Aggregate barycenters
   array1d< R1Tensor > aggregateBarycenters( nparts );
   array1d< real64 > aggregateVolumes( nparts );
@@ -314,7 +342,7 @@ void ElementRegion::GenerateAggregates( FaceManager const * const faceManager, N
   {
     partsGEOS[fineCellIndex] = integer_conversion< localIndex >( parts[fineCellIndex] );
   }
-  aggregateSubRegion->CreateFromFineToCoarseMap(nbAggregates, partsGEOS, aggregateBarycenters);
+  aggregateSubRegion->CreateFromFineToCoarseMap(nbAggregates, partsGEOS, aggregateBarycenters, aggregateVolumes);
 }
 
 

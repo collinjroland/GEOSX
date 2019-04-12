@@ -75,6 +75,7 @@ void MeshUtilities::GenerateNodesets( dataRepository::ManagedGroup const * geome
         if (object!=nullptr)
         {
           string name = object->getName();
+          std::cout << "NAME OF THE OBJECT " << name << std::endl;
           set<localIndex> & targetSet = sets->RegisterViewWrapper< set<localIndex> >(name)->reference();
           for (localIndex a=0 ; a<X.size() ; ++a)
           {

@@ -47,7 +47,7 @@ public:
     for(localIndex fineCell = m_nbFineCellsPerCoarseCell[aggregateIndex]; 
         fineCell < m_nbFineCellsPerCoarseCell[aggregateIndex+1]; fineCell++)
     {
-      lambda(m_fineToCoarse[fineCell]);
+      lambda(m_fineByAggregates[fineCell]);
     }
   }
 
@@ -63,7 +63,8 @@ public:
  
   void CreateFromFineToCoarseMap( localIndex nbAggregates,
                                   array1d< localIndex > const & fineToCoarse,
-                                  array1d< R1Tensor > const & barycenters);
+                                  array1d< R1Tensor > const & barycenters,
+                                  array1d< real64 > const & volumes);
 
   const array1d< localIndex >& GetFineToCoarseMap()
   {
@@ -87,12 +88,6 @@ public:
   {
     //TODO ?
   }
-
-  struct viewKeyStruct : ObjectManagerBase::viewKeyStruct
-  {
-    static constexpr auto elementVolumeString          = "elementVolume";
-    static constexpr auto fineElementsListString       = "fineElements";
-  };
 
   /*!
    * @brief returns the element to node relations.
@@ -120,6 +115,8 @@ private:
 
   /// Relation between fine and coarse elements ordered by aggregates
   array1d< localIndex > m_fineToCoarse;
+
+  array1d< localIndex > m_fineByAggregates;
 
   /// Number of fine cells per aggregate
   array1d< localIndex > m_nbFineCellsPerCoarseCell;

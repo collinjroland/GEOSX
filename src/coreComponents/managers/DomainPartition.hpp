@@ -26,6 +26,7 @@
 #include "dataRepository/ManagedGroup.hpp"
 #include "mesh/MeshBody.hpp"
 #include "constitutive/ConstitutiveManager.hpp"
+#include "meshUtilities/SimpleGeometricObjects/GeometricObjectManager.hpp"
 namespace geosx
 {
 
@@ -62,6 +63,7 @@ public:
 
   void SetMaps();
   void GenerateSets();
+  void GenerateSetsOnAggregates( GeometricObjectManager const * const geometricManager );
 
 
   /**

@@ -26,6 +26,8 @@ AggregateElementSubRegion::AggregateElementSubRegion( string const & name,
                                                       dataRepository::ManagedGroup * const parent):
   ElementSubRegionBase( name, parent )
 {
+  RegisterViewWrapper(viewKeyStruct::elementCenterString, &m_elementCenter, 0 );
+  RegisterViewWrapper(viewKeyStruct::elementVolumeString, &m_elementVolume, 0 );
 }
 
 AggregateElementSubRegion::~AggregateElementSubRegion()
@@ -34,11 +36,15 @@ AggregateElementSubRegion::~AggregateElementSubRegion()
 
 void AggregateElementSubRegion::CreateFromFineToCoarseMap( localIndex nbAggregates,
                                                            array1d< localIndex > const & fineToCoarse,
-                                                           array1d< R1Tensor > const & barycenters)
+                                                           array1d< R1Tensor > const & barycenters,
+                                                           array1d< real64 > const & volumes )
 {
+  this->resize( nbAggregates );
   m_elementCenter = barycenters;
+  m_elementVolume = volumes;
   m_nbFineCellsPerCoarseCell.resize( nbAggregates + 1 );
-  m_fineToCoarse.resize( fineToCoarse.size() );
+  m_fineToCoarse = fineToCoarse;
+  m_fineByAggregates.resize( fineToCoarse.size() ) ;
   
   /// First loop to count the number of fine cells per coarse cell
   for( localIndex fineCell = 0; fineCell < fineToCoarse.size(); fineCell++ )
@@ -57,7 +63,7 @@ void AggregateElementSubRegion::CreateFromFineToCoarseMap( localIndex nbAggregat
   for( localIndex fineCell = 0; fineCell < fineToCoarse.size(); fineCell++ )
   {
     localIndex coarseCell = fineToCoarse[fineCell];
-    m_fineToCoarse[m_nbFineCellsPerCoarseCell[coarseCell] + offset[coarseCell]++] = fineCell;
+    m_fineByAggregates[m_nbFineCellsPerCoarseCell[coarseCell] + offset[coarseCell]++] = fineCell;
 
   }
 }

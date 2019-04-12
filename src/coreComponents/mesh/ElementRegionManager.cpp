@@ -144,7 +144,8 @@ void ElementRegionManager::GenerateFractureMesh( FaceManager const * const faceM
 }
 
 
-void ElementRegionManager::GenerateAggregates( FaceManager const * const faceManager, NodeManager const * const nodeManager )
+void ElementRegionManager::GenerateAggregates( FaceManager const * const faceManager,
+                                               NodeManager const * const nodeManager )
 {
   this->forElementRegions([&](ElementRegion * const elemRegion)->void
   {

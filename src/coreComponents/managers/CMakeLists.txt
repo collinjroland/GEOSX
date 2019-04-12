@@ -26,6 +26,7 @@ set(managers_headers
     ProblemManager.hpp
     NumericalMethodsManager.hpp
     FieldSpecification/CopyField.hpp
+    FieldSpecification/DownScaleField.hpp
     FieldSpecification/FieldSpecificationBase.hpp
     FieldSpecification/FieldSpecificationManager.hpp
     FieldSpecification/DirichletBoundaryCondition.hpp)
@@ -58,6 +59,7 @@ set(managers_sources
     ProblemManager.cpp
     NumericalMethodsManager.cpp
     FieldSpecification/CopyField.cpp
+    FieldSpecification/DownScaleField.cpp
     FieldSpecification/FieldSpecificationBase.cpp
     FieldSpecification/FieldSpecificationManager.cpp
     FieldSpecification/DirichletBoundaryCondition.cpp)

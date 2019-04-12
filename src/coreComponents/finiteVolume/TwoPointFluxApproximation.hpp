@@ -39,17 +39,18 @@ public:
 
   TwoPointFluxApproximation(std::string const & name, dataRepository::ManagedGroup * const parent);
 
+  void computeCoarsetencil( DomainPartition * domain,
+                            CellStencil const & fineStencil,
+                            CellStencil & coarseStencil,
+                            std::string const & elementaryPressure1Name,
+                            std::string const & elementaryPressure2Name,
+                            std::string const & elementaryPressure3Name );
+
 protected:
 
   virtual void computeCellStencil( DomainPartition const & domain,
                                    CellStencil & stencil ) override;
 
-  virtual void computeCoarsetencil( DomainPartition * domain,
-                                    CellStencil const & fineStencil,
-                                    CellStencil & coarseStencil,
-                                    std::string const & elementaryPressure1Name,
-                                    std::string const & elementaryPressure2Name,
-                                    std::string const & elementaryPressure3Name);
 
   virtual void computeFractureStencil( DomainPartition const & domain,
                                        CellStencil & fractureStencil,

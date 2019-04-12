@@ -398,6 +398,11 @@ public:
 
   string_array const & getTargetRegions() const {return m_targetRegions;}
 
+  void switchAggregateMode( bool aggregateMode )
+  {
+    m_aggregateMode = aggregateMode;
+  }
+
   // below is some helper stuff for applyToSubRegions() that should probably be elsewhere
 
   template<typename T, bool COND>
@@ -506,19 +511,40 @@ public:
     std::cout << 3 << std::endl;
 
     auto * const elemManager = mesh->getElemManager();
-    if (m_targetRegions.empty())
+    if( !m_aggregateMode )
     {
-      elemManager->forElementSubRegionsComplete( std::forward<LAMBDA>(lambda) );
+      if (m_targetRegions.empty())
+      {
+        elemManager->forElementSubRegionsComplete( std::forward<LAMBDA>(lambda) );
+      }
+      else
+      {
+        for (string const & regionName : m_targetRegions)
+        {
+          auto * const region = elemManager->GetRegion( regionName );
+          region->forElementSubRegionsIndex( [&] ( localIndex const esr, auto * const subRegion )
+          {
+            lambda( region->getIndexInParent(), esr, region, subRegion );
+          } );
+        }
+      }
     }
     else
     {
-      for (string const & regionName : m_targetRegions)
+      if (m_targetRegions.empty())
       {
-        auto * const region = elemManager->GetRegion( regionName );
-        region->forElementSubRegionsIndex( [&] ( localIndex const esr, auto * const subRegion )
+        elemManager->template forElementSubRegionsComplete<AggregateElementSubRegion>( std::forward<LAMBDA>(lambda) );
+      }
+      else
+      {
+        for (string const & regionName : m_targetRegions)
         {
-          lambda( region->getIndexInParent(), esr, region, subRegion );
-        } );
+          auto * const region = elemManager->GetRegion( regionName );
+          region->template forElementSubRegionsIndex< AggregateElementSubRegion >( [&] ( localIndex const esr, auto * const subRegion )
+          {
+            lambda( region->getIndexInParent(), esr, region, subRegion );
+          } );
+        }
       }
     }
   }

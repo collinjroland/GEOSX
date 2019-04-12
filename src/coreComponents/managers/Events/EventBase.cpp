@@ -289,6 +289,7 @@ void EventBase::Step(real64 const time,
   {
     isTargetExecuting = 1;
     m_target->Execute(time, dt, cycle, m_eventCount, m_eventProgress, domain);
+    std::cout << "Executing " << m_target->getName() << std::endl;
   }
   isTargetExecuting = 0;
 

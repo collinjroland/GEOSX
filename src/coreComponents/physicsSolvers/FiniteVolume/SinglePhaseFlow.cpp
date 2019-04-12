@@ -256,12 +256,14 @@ void SinglePhaseFlow::ImplicitStepSetup( real64 const& time_n,
     arrayView1d<real64> const & dVol    = m_deltaVolume[er][esr];
     arrayView1d<real64> const & densOld = m_densityOld[er][esr];
     arrayView1d<real64> const & poroOld = m_porosityOld[er][esr];
+    std::cout << er << " " << esr << std::endl;
 
     forall_in_range<elemPolicy>( 0, subRegion->size(), GEOSX_LAMBDA ( localIndex ei )
     {
       dPres[ei] = 0.0;
       dVol[ei] = 0.0;
       densOld[ei] = dens[ei][0];
+      //densOld[ei] = 1.;
       poroOld[ei] = poro[ei];
     } );
   } );
@@ -450,6 +452,12 @@ void SinglePhaseFlow::SetSparsityPattern( DomainPartition const * const domain,
 
   FiniteVolumeManager const * fvManager =
     numericalMethodManager->GetGroup<FiniteVolumeManager>( keys::finiteVolumeManager );
+
+  if( m_aggregateMode )
+  {
+    std::cout << "AGGREGATION DONE TOGGLE LOL" << std::endl;
+    m_discretizationName = "coarseSinglePhaseTPFA";
+  }
 
   FluxApproximationBase const * fluxApprox = fvManager->getFluxApproximation( m_discretizationName );
 
@@ -651,6 +659,9 @@ void SinglePhaseFlow::AssembleAccumulationTerms( DomainPartition const * const d
     arrayView1d<real64 const> const & totalMeanStress    = m_poroElasticFlag ? m_totalMeanStress[er][esr]           : poroOld;
     arrayView2d<real64 const> const & bulkModulus        = m_poroElasticFlag ? m_bulkModulus[er][esr][m_solidIndex] : dPVMult_dPres;
     real64 const & biotCoefficient                       = m_poroElasticFlag ? m_biotCoefficient[er][esr][m_solidIndex] : 0;
+        std::cout << "volume size : " << volume.size() << "   dvol size : " << dVol.size() << std::endl;
+        std::cout << "porosity size : " << poroRef.size()  << std::endl;
+        std::cout << "subregion index : " << esr << std::endl;
 
     forall_in_range<elemPolicy>( 0, subRegion->size(), GEOSX_LAMBDA ( localIndex ei )
     {
@@ -858,6 +869,7 @@ void SinglePhaseFlow::ApplyDirichletBC_implicit( DomainPartition * domain,
                                                  real64 const time_n, real64 const dt,
                                                  EpetraBlockSystem * const blockSystem )
 {
+  std::cout << "SinglePhaseFlow::ApplyDirichletBC_implicit" << std::endl;
   FieldSpecificationManager * fsManager = FieldSpecificationManager::get();
 
   // call the BoundaryConditionManager::ApplyField function that will check to see
@@ -874,6 +886,11 @@ void SinglePhaseFlow::ApplyDirichletBC_implicit( DomainPartition * domain,
 
     arrayView1d<real64 const> const &
     pres = subRegion->getReference<array1d<real64> >( viewKeyStruct::pressureString );
+    std::cout << "Display pres BC " << std::endl;
+    for(int i = 0 ; i < pres.size() ; i++)
+    {
+//    std::cout << pres[i] << std::endl;
+    }
 
     arrayView1d<real64 const> const &
     dPres = subRegion->getReference<array1d<real64> >( viewKeyStruct::deltaPressureString );
@@ -1281,7 +1298,7 @@ void SinglePhaseFlow::SolveSystem( EpetraBlockSystem * const blockSystem,
                                                 params,
                                                 BlockIDs::fluidPressureBlock );
 
-  if( verboseLevel() >= 2 )
+  if( verboseLevel() >= 0 )
   {
     GEOS_LOG_RANK("After SinglePhaseFlow::SolveSystem");
     GEOS_LOG_RANK("\nsolution\n" << *solution);
@@ -1314,6 +1331,7 @@ void SinglePhaseFlow::ResetViews(DomainPartition * const domain)
   MeshLevel * const mesh = domain->getMeshBody( 0 )->getMeshLevel( 0 );
   ElementRegionManager * const elemManager = mesh->getElemManager();
   ConstitutiveManager * const constitutiveManager = domain->getConstitutiveManager();
+  std::cout << "ResetView" << std::endl;
 
   m_dofNumber =
     elemManager->ConstructViewAccessor<array1d<globalIndex>, arrayView1d<globalIndex>>( viewKeyStruct::blockLocalDofNumberString );
