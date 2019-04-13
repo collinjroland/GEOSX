@@ -30,6 +30,7 @@
 #include "CellBlock.hpp"
 #include "constitutive/ConstitutiveManager.hpp"
 #include "CellElementSubRegion.hpp"
+#include "AggregateElementSubRegion.hpp"
 #include "managers/ObjectManagerBase.hpp"
 #include "dataRepository/ReferenceWrapper.hpp"
 //#include "legacy/ArrayT/bufvector.h"
@@ -480,6 +481,26 @@ ConstructReferenceAccessor( string const & viewName, string const & neighborName
 {
   ElementViewAccessor<ReferenceWrapper<VIEWTYPE>> viewAccessor;
   viewAccessor.resize( numRegions() );
+  forElementRegions([&]( auto * const region )->void
+  {
+    viewAccessor[region->getIndexInParent()].resize( region->numSubRegions() );
+    region->template forElementSubRegions< CellElementSubRegion, AggregateElementSubRegion >([&] ( auto * const subRegion )->void
+    {
+      ManagedGroup * group = subRegion;
+
+      if( !neighborName.empty() )
+      {
+        group = group->GetGroup(ObjectManagerBase::groupKeyStruct::neighborDataString)->GetGroup(neighborName);
+      }
+
+      if ( group->hasView(viewName) )
+      {
+        viewAccessor[region->getIndexInParent()][subRegion->getIndexInParent()].set(group->getReference<VIEWTYPE>(viewName));
+      }
+    });
+
+  });
+  /*
   for( typename dataRepository::indexType kReg=0 ; kReg<numRegions() ; ++kReg  )
   {
     ElementRegion * const elemRegion = GetRegion(kReg);
@@ -500,6 +521,7 @@ ConstructReferenceAccessor( string const & viewName, string const & neighborName
       }
     }
   }
+  */
   return viewAccessor;
 }
 

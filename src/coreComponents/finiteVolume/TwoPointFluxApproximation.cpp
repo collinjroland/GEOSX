@@ -318,6 +318,7 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
         for( localIndex i = 0; i < 2; i++ )
         {
           stencilWeights[i] = std::fabs(coarseFlowRate[i] / ( coarseAveragePressure1 - coarseAveragePressure2 )) * std::pow(-1,i) ; // TODO sign ?
+          std::cout <<  stencilWeights[i] << " ";
         }
         std::cout << std::endl;
         coarseStencil.add(stencilCells.data(), stencilCells, stencilWeights, 0.);
@@ -331,6 +332,7 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
 std::cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" << std::endl;
 std::cout << "interface size "<< interfaces.size() << std::endl;
 std::cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" << std::endl;
+//GEOS_ERROR_IF(true,"error");
 }
 
 
