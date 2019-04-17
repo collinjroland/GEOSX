@@ -89,31 +89,75 @@ void AggregateElementSubRegion::CreateFromFineToCoarseMap( localIndex nbAggregat
 
 }
 
+struct newAggregate
+{
+  real64 volume;
+  R1Tensor center;
+  localIndex rankFrom;
+  localIndex indexFrom;
+  localIndex newIndex;
+  bool operator==(const newAggregate& rhs) const
+  {
+    return rhs.indexFrom == indexFrom;
+  }
+  bool operator<(const newAggregate& rhs) const
+  {
+    return indexFrom < rhs.indexFrom;
+  }
+
+};
 void AggregateElementSubRegion::ComputeGhosts()
 {
    ElementRegion const * elementRegion = this->getParent()->getParent()->group_cast<ElementRegion const *>();
    std::cout << "Compute ghost "<< std::endl;
        GEOS_LOG_RANK( "in compute ghost size "<< this->size());
+   std::set< newAggregate > ghostAggregates;
+   localIndex offset = this->size();
+   localIndex oldSize = this->size();
    elementRegion->forElementSubRegions([&]( auto const * const subRegion )-> void
    {
      std::cout << "sub region size " << subRegion->size() << std::endl;
      std::cout << "sub region ghost element " << subRegion->GetNumberOfGhosts() << std::endl;
-     localIndex oldSize = m_fineToCoarse.size();
-     m_fineToCoarse.resize(  oldSize  + subRegion->GetNumberOfGhosts());
+     localIndex oldFineToCoarseSize = m_fineToCoarse.size();
+     m_fineToCoarse.resize(  oldFineToCoarseSize  + subRegion->GetNumberOfGhosts());
       auto & aggregateIndex =
         subRegion->template getWrapper< array1d< localIndex > > ("aggregateIndex")->reference();
+      auto & aggregateCenter =
+        subRegion->template getWrapper< array1d< R1Tensor > > ("aggregateCenter")->reference();
+      auto & aggregateVolume =
+        subRegion->template getWrapper< array1d< real64 > > ("aggregateVolume")->reference();
        GEOS_LOG_RANK(subRegion->m_globalToLocalMap.size());
        GEOS_LOG_RANK(subRegion->m_localToGlobalMap.size());
        GEOS_LOG_RANK("aggregateIndex ssize " << aggregateIndex.size());
        GEOS_LOG_RANK("oldsize " <<oldSize);
-     for(localIndex i = oldSize ; i < m_fineToCoarse.size();i++)
+     for(localIndex i = oldFineToCoarseSize ; i < m_fineToCoarse.size();i++)
      {
-       m_fineToCoarse[i] = aggregateIndex[i];
+       newAggregate curAggregate;
+       curAggregate.indexFrom = aggregateIndex[i];
+       if( ghostAggregates.find(curAggregate) == ghostAggregates.end() )
+       {
+         curAggregate.center = aggregateCenter[i];
+         curAggregate.volume = aggregateVolume[i];
+         curAggregate.newIndex = offset++;
+         curAggregate.rankFrom = subRegion->GhostRank()[i];
+         ghostAggregates.insert(curAggregate);
+       }
      }
    });
+   this->resize( this->size() + ghostAggregates.size());
+   for(auto curAggregate : ghostAggregates)
+   {
+     m_elementVolume[curAggregate.newIndex ] = curAggregate.volume;
+     m_elementCenter[curAggregate.newIndex ] = curAggregate.center;
+     m_ghostRank[curAggregate.newIndex] = curAggregate.rankFrom;
+   }
+   GEOS_LOG_RANK("nb new aggrefates" << ghostAggregates.size());
    GEOS_LOG_RANK("new fine to coarse size" << m_fineToCoarse.size());
+   GEOS_LOG_RANK("volume size" << m_elementVolume.size());
+   GEOS_LOG_RANK("volume first" << m_elementVolume[0]);
+   GEOS_LOG_RANK("volume last" << m_elementVolume[this->size()-1]);
    GEOS_LOG_RANK("new local to glocal size " << m_localToGlobalMap.size());
    GEOS_LOG_RANK("new global to local size " << m_globalToLocalMap.size());
-   GEOS_ERROR_IF(true,"staph");
+   //GEOS_ERROR_IF(true,"staph");
 }
 }

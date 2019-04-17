@@ -38,6 +38,8 @@ CellElementSubRegion::CellElementSubRegion( string const & name, ManagedGroup * 
   RegisterViewWrapper( viewKeyStruct::dNdXString, &m_dNdX, 0);
 
   RegisterViewWrapper( "aggregateIndex", &m_aggregateIndex, 0); //TODO : hardcoded
+  RegisterViewWrapper( "aggregateVolume", &m_aggregateVolume, 0); //TODO : hardcoded
+  RegisterViewWrapper( "aggregateCenter", &m_aggregateCenter, 0); //TODO : hardcoded
 
   RegisterViewWrapper( viewKeyStruct::constitutivePointVolumeFraction,
                        &m_constitutivePointVolumeFraction, 0);

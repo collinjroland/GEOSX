@@ -221,6 +221,8 @@ void ElementRegion::GenerateAggregates( FaceManager const * const faceManager, N
   this->forElementSubRegions( [&]( auto * elementSubRegion ) -> void
     {
       nbCellElements += elementSubRegion->size();
+      GEOS_LOG_RANK("number of ghost in subdomain" << elementSubRegion->GetNumberOfGhosts());
+      GEOS_LOG_RANK("sunregion size" << elementSubRegion->size());
     });
   // Number of aggregate computation
   localIndex nbAggregates = integer_conversion< localIndex >( int(nbCellElements * m_coarseningRatio) );
@@ -241,7 +243,7 @@ void ElementRegion::GenerateAggregates( FaceManager const * const faceManager, N
   LvArray::SparsityPattern< idx_t, idx_t > graph( integer_conversion< idx_t >( nbCellElements ),
                                                   integer_conversion< idx_t >( nbCellElements ) );
   localIndex nbConnections = 0;
-  array1d< localIndex > offsetSubRegions( this->GetSubRegions().size() );
+  array1d< localIndex > offsetSubRegions( this->GetSubRegions().size() - 1 );
   for( localIndex subRegionIndex = 1; subRegionIndex < offsetSubRegions.size(); subRegionIndex++ )
   {
     offsetSubRegions[subRegionIndex] = offsetSubRegions[subRegionIndex - 1] + this->GetSubRegion(subRegionIndex)->size();
@@ -343,12 +345,18 @@ void ElementRegion::GenerateAggregates( FaceManager const * const faceManager, N
   }
   this->forElementSubRegions( [&]( auto * elementSubRegion ) -> void
   {
-      auto & aggregateIndex =
+      auto & aggregateIndexSave =
         elementSubRegion->template getWrapper< array1d< localIndex > > ("aggregateIndex")->reference();
-        GEOS_LOG_RANK("aggregate index siz e ;  "<< aggregateIndex.size());
+      auto & aggregateVolumeSave =
+        elementSubRegion->template getWrapper< array1d< real64 > > ("aggregateVolume")->reference();
+      auto & aggregateCenterSave =
+        elementSubRegion->template getWrapper< array1d< R1Tensor > > ("aggregateCenter")->reference();
       for(int i = 0; i < elementSubRegion->size() ;i++)
       {
-        aggregateIndex[i] = partsGEOS[i];
+        aggregateIndexSave[i] = partsGEOS[i];
+        localIndex correspondingAggregate = partsGEOS[i];
+        aggregateVolumeSave[i] = aggregateVolumes[correspondingAggregate];
+        aggregateCenterSave[i] = aggregateBarycenters[correspondingAggregate];
       }
   });
   aggregateSubRegion->CreateFromFineToCoarseMap(nbAggregates, partsGEOS, aggregateBarycenters, aggregateVolumes);

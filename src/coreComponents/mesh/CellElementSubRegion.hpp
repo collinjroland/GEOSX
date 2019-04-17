@@ -107,6 +107,10 @@ private:
 
   array1d< localIndex > m_aggregateIndex;
 
+  array1d< real64 > m_aggregateVolume;
+
+  array1d< R1Tensor > m_aggregateCenter;
+
   template< bool DOPACK >
   localIndex PackUpDownMapsPrivate( buffer_unit_type * & buffer,
                                     arrayView1d<localIndex const> const & packList ) const;
