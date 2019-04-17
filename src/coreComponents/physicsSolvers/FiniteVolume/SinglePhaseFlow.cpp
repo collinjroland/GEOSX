@@ -250,13 +250,15 @@ void SinglePhaseFlow::ImplicitStepSetup( real64 const& time_n,
   {
     std::cout << subRegion->getName() << std::endl;
     arrayView2d<real64 const> const & dens = m_density[er][esr][m_fluidIndex];
-    arrayView1d<real64 const> const & poro = m_porosity[er][esr];
+    arrayView1d<real64> poro = m_porosity[er][esr];
 
     arrayView1d<real64> const & dPres   = m_deltaPressure[er][esr];
     arrayView1d<real64> const & dVol    = m_deltaVolume[er][esr];
     arrayView1d<real64> const & densOld = m_densityOld[er][esr];
     arrayView1d<real64> const & poroOld = m_porosityOld[er][esr];
     std::cout << er << " " << esr << std::endl;
+    arrayView1d<real64 const> const & poroRef = m_porosityRef[er][esr];
+    arrayView2d<real64 const> const & pvmult  = m_pvMult[er][esr][m_solidIndex];
 
     forall_in_range<elemPolicy>( 0, subRegion->size(), GEOSX_LAMBDA ( localIndex ei )
     {
@@ -264,6 +266,7 @@ void SinglePhaseFlow::ImplicitStepSetup( real64 const& time_n,
       dVol[ei] = 0.0;
       densOld[ei] = dens[ei][0];
       //densOld[ei] = 1.;
+     // poro[ei] = poroRef[ei] * pvmult[ei][0]; TODO  : what to do with that ?
       poroOld[ei] = poro[ei];
     } );
   } );
@@ -1298,7 +1301,7 @@ void SinglePhaseFlow::SolveSystem( EpetraBlockSystem * const blockSystem,
                                                 params,
                                                 BlockIDs::fluidPressureBlock );
 
-  if( verboseLevel() >= 0 )
+  if( verboseLevel() >= 2 )
   {
     GEOS_LOG_RANK("After SinglePhaseFlow::SolveSystem");
     GEOS_LOG_RANK("\nsolution\n" << *solution);

@@ -105,6 +105,8 @@ private:
   map<localIndex, array1d<globalIndex> > m_unmappedGlobalIndicesInNodelist;
   map<localIndex, array1d<globalIndex> > m_unmappedGlobalIndicesInFacelist;
 
+  array1d< localIndex > m_aggregateIndex;
+
   template< bool DOPACK >
   localIndex PackUpDownMapsPrivate( buffer_unit_type * & buffer,
                                     arrayView1d<localIndex const> const & packList ) const;

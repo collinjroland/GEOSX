@@ -188,7 +188,7 @@ ElementRegionManager::PackPrivate( buffer_unit_type * & buffer,
 
     packedSize += bufferOps::Pack<DOPACK>( buffer, elemRegion->numSubRegions() );
 
-    elemRegion->forElementSubRegionsIndex([&]( localIndex const esr, auto const * const subRegion )
+    elemRegion->forElementSubRegionsIndex<CellElementSubRegion, AggregateElementSubRegion>([&]( localIndex const esr, auto const * const subRegion )
     {
       packedSize += bufferOps::Pack<DOPACK>( buffer, subRegion->getName() );
 
@@ -249,7 +249,7 @@ int ElementRegionManager::UnpackPrivate( buffer_unit_type const * & buffer,
 
     localIndex numSubRegionsRead;
     unpackedSize += bufferOps::Unpack( buffer, numSubRegionsRead );
-    elemRegion->forElementSubRegionsIndex([&]( localIndex const esr, auto * const subRegion )
+    elemRegion->forElementSubRegionsIndex<CellElementSubRegion, AggregateElementSubRegion>([&]( localIndex const esr, auto * const subRegion )
     {
       string subRegionName;
       unpackedSize += bufferOps::Unpack( buffer, subRegionName );
@@ -291,7 +291,7 @@ ElementRegionManager::PackGlobalMapsPrivate( buffer_unit_type * & buffer,
     packedSize += bufferOps::Pack<DOPACK>( buffer, elemRegion->getName() );
 
     packedSize += bufferOps::Pack<DOPACK>( buffer, elemRegion->numSubRegions() );
-    elemRegion->forElementSubRegionsIndex([&]( localIndex const esr, auto const * const subRegion )
+    elemRegion->forElementSubRegionsIndex<CellElementSubRegion, AggregateElementSubRegion>([&]( localIndex const esr, auto const * const subRegion )
     {
       packedSize += bufferOps::Pack<DOPACK>( buffer, subRegion->getName() );
 
@@ -333,7 +333,7 @@ ElementRegionManager::UnpackGlobalMaps( buffer_unit_type const * & buffer,
     localIndex numSubRegionsRead;
     unpackedSize += bufferOps::Unpack( buffer, numSubRegionsRead );
     packList[kReg].resize(numSubRegionsRead);
-    elemRegion->forElementSubRegionsIndex([&]( localIndex const esr, auto * const subRegion )
+    elemRegion->forElementSubRegionsIndex<CellElementSubRegion, AggregateElementSubRegion>([&]( localIndex const esr, auto * const subRegion )
     {
       string subRegionName;
       unpackedSize += bufferOps::Unpack( buffer, subRegionName );
@@ -388,7 +388,7 @@ ElementRegionManager::PackUpDownMapsPrivate( buffer_unit_type * & buffer,
     packedSize += bufferOps::Pack<DOPACK>( buffer, elemRegion->getName() );
 
     packedSize += bufferOps::Pack<DOPACK>( buffer, elemRegion->numSubRegions() );
-    elemRegion->forElementSubRegionsIndex([&]( localIndex const esr, auto const * const subRegion )
+    elemRegion->forElementSubRegionsIndex<CellElementSubRegion, AggregateElementSubRegion>([&]( localIndex const esr, auto const * const subRegion )
     {
       packedSize += bufferOps::Pack<DOPACK>( buffer, subRegion->getName() );
 
@@ -435,7 +435,7 @@ ElementRegionManager::UnpackUpDownMaps( buffer_unit_type const * & buffer,
 
     localIndex numSubRegionsRead;
     unpackedSize += bufferOps::Unpack( buffer, numSubRegionsRead );
-    elemRegion->forElementSubRegionsIndex([&]( localIndex const kSubReg, auto * const subRegion )
+    elemRegion->forElementSubRegionsIndex<CellElementSubRegion, AggregateElementSubRegion>([&]( localIndex const kSubReg, auto * const subRegion )
     {
       string subRegionName;
       unpackedSize += bufferOps::Unpack( buffer, subRegionName );

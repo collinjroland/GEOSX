@@ -251,7 +251,7 @@ void NeighborCommunicator::AddNeighborGroupToMesh( MeshLevel * const mesh ) cons
                                         RegisterGroup( std::to_string( this->m_neighborRank ));
 
   ElementRegionManager * const elemManager = mesh->getElemManager();
-  elemManager->forElementSubRegions( [&]( ManagedGroup * const elementSubRegion ) -> void
+  elemManager->forElementSubRegions<CellElementSubRegion, AggregateElementSubRegion>( [&]( ManagedGroup * const elementSubRegion ) -> void
     {
       neighborGroups[numNeighborGroups++] = elementSubRegion->
                                             GetGroup( faceManager->m_ObjectManagerBaseGroupKeys.neighborData )->

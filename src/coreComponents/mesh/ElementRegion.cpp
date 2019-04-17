@@ -218,7 +218,7 @@ void ElementRegion::GenerateAggregates( FaceManager const * const faceManager, N
 
   // Counting the total number of cell and number of vertices  
   localIndex nbCellElements = 0;
-  this->forElementSubRegions( [&]( auto * const elementSubRegion ) -> void
+  this->forElementSubRegions( [&]( auto * elementSubRegion ) -> void
     {
       nbCellElements += elementSubRegion->size();
     });
@@ -254,9 +254,16 @@ void ElementRegion::GenerateAggregates( FaceManager const * const faceManager, N
       idx_t const ei0  = integer_conversion< idx_t >( elemList[kf][0] + offsetSubRegions[esr0] );
       localIndex const esr1 = elemSubRegionList[kf][1];
       idx_t const ei1  = integer_conversion< idx_t >( elemList[kf][1] + offsetSubRegions[esr1] );
+      if( ei0 >= nbCellElements )
+      {
+        std::cout << ei0 << " is too biig" << std::endl;
+      }
+      if( ei1 >= nbCellElements )
+      {
+        std::cout << ei1 << " is too biig" << std::endl;
+      }
       graph.insertNonZero(ei0, ei1);
       graph.insertNonZero(ei1, ei0);
-      std::cout << ei0 << " connectted to " << ei1 << std::endl;
       nbConnections++;
     }
   }
@@ -279,19 +286,10 @@ void ElementRegion::GenerateAggregates( FaceManager const * const faceManager, N
     }
   }
 
-  for(int i = 0 ; i < nnodes + 1 ; i++)
-  {
-    std::cout << xadjs[i] << " " << graph.getOffsets()[i] << std::endl;
-  }
   // METIS partitionning
   METIS_PartGraphRecursive( &nnodes, &nconst, xadjs, adjncy, nullptr, nullptr, nullptr,
                             &nparts, nullptr, nullptr, options, &objval, parts.data() );
 
-  std::cout << "debug graph " << std::endl;
-  for(int i = 0 ; i < parts.size() ;i++)
-  {
-     std::cout << i << " " << parts[i] << std::endl;
-  }
   // Compute Aggregate barycenters
   array1d< R1Tensor > aggregateBarycenters( nparts );
   array1d< real64 > aggregateVolumes( nparts );
@@ -326,6 +324,7 @@ void ElementRegion::GenerateAggregates( FaceManager const * const faceManager, N
   this->forElementSubRegions( [&]( auto * const elementSubRegion ) -> void
   {
     localIndex const subRegionIndex = elementSubRegion->getIndexInParent();
+    std::cout << "subRegion size : " << elementSubRegion->size() << std::endl;
     for(localIndex cellIndex = 0; cellIndex< elementSubRegion->size() ; cellIndex++)
     {
       if( elementSubRegion->GhostRank()[cellIndex] >= 0 )
@@ -342,6 +341,16 @@ void ElementRegion::GenerateAggregates( FaceManager const * const faceManager, N
   {
     partsGEOS[fineCellIndex] = integer_conversion< localIndex >( parts[fineCellIndex] );
   }
+  this->forElementSubRegions( [&]( auto * elementSubRegion ) -> void
+  {
+      auto & aggregateIndex =
+        elementSubRegion->template getWrapper< array1d< localIndex > > ("aggregateIndex")->reference();
+        GEOS_LOG_RANK("aggregate index siz e ;  "<< aggregateIndex.size());
+      for(int i = 0; i < elementSubRegion->size() ;i++)
+      {
+        aggregateIndex[i] = partsGEOS[i];
+      }
+  });
   aggregateSubRegion->CreateFromFineToCoarseMap(nbAggregates, partsGEOS, aggregateBarycenters, aggregateVolumes);
 }
 

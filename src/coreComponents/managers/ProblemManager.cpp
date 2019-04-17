@@ -196,6 +196,23 @@ void ProblemManager::ProblemSetup()
   Initialize( this );
   GEOSX_MARK_END("problemManager.Initialize");
 
+  DomainPartition * domain  = getDomainPartition();
+  ManagedGroup * const meshBodies = domain->getMeshBodies();
+  for( localIndex a=0; a<meshBodies->GetSubGroups().size() ; ++a )
+  {
+    MeshBody * const meshBody = meshBodies->GetGroup<MeshBody>(a);
+    for( localIndex b=0 ; b<meshBody->numSubGroups() ; ++b )
+    {
+      MeshLevel * const meshLevel = meshBody->GetGroup<MeshLevel>(b);
+
+      NodeManager * const nodeManager = meshLevel->getNodeManager();
+      EdgeManager * edgeManager = meshLevel->getEdgeManager();
+      FaceManager * const faceManager = meshLevel->getFaceManager();
+      ElementRegionManager * const elemManager = meshLevel->getElemManager();
+      elemManager->GetRegion(0)->GetSubRegion("coarse")->group_cast<AggregateElementSubRegion*>()->ComputeGhosts();
+    }
+  }
+
   ApplyInitialConditions();
 
   GEOSX_MARK_BEGIN("problemManager.InitializePostInitialConditions");

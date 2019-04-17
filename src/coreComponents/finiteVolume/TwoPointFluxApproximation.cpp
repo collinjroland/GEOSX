@@ -185,6 +185,10 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
 
   array1d<CellDescriptor> stencilCells(2);
   array1d<real64> stencilWeights(2);
+
+  std::cout << "NB GHOST FINE " << elemManager->GetRegion(0)->GetSubRegion(0)->GetNumberOfGhosts() << std::endl;
+  std::cout << "NB GHOST COARSE " << aggregateElement->GetNumberOfGhosts() << std::endl;
+//  GEOS_ERROR_IF(true, "ghost");
   std::set< std::pair< localIndex, localIndex > > interfaces;
   fineStencil.forAll( [&] ( StencilCollection<CellDescriptor, real64>::Accessor stencil ) //TODO maybe find a clever way to iterate between coarse interfaces ?
   {
@@ -284,8 +288,6 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
 
         coarseAveragePressure1 /= aggregateElement->getElementVolume()[aggregateNumber1];
         coarseAveragePressure2 /= aggregateElement->getElementVolume()[aggregateNumber2];
-        std::cout << "volume 1: "<< aggregateElement->getElementVolume()[aggregateNumber1] << std::endl;
-        std::cout << "volume 2: "<< aggregateElement->getElementVolume()[aggregateNumber2] << std::endl;
 
         fineStencil.forAll( [&] ( StencilCollection<CellDescriptor, real64>::Accessor stencilBis )
         {
@@ -318,13 +320,10 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
         for( localIndex i = 0; i < 2; i++ )
         {
           stencilWeights[i] = std::fabs(coarseFlowRate[i] / ( coarseAveragePressure1 - coarseAveragePressure2 )) * std::pow(-1,i) ; // TODO sign ?
-          std::cout <<  stencilWeights[i] << " ";
         }
-        std::cout << std::endl;
         coarseStencil.add(stencilCells.data(), stencilCells, stencilWeights, 0.);
         interfaces.insert(std::make_pair(aggregateNumber1, aggregateNumber2));
         interfaces.insert(std::make_pair(aggregateNumber2, aggregateNumber1));
-        std::cout << "ON PASSE "<< std::endl;
       }
     }
 });

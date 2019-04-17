@@ -109,6 +109,8 @@ public:
     return m_toNodesRelation[k];
   }
 
+  void ComputeGhosts();
+
 private:
   /// The elements to nodes relation is one to one relation.
   NodeMapType  m_toNodesRelation;

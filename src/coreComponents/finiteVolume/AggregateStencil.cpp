@@ -91,7 +91,6 @@ void AggregateStencil::Execute( real64 const time_n,
           porosity[0][1][aggregateIndex] += porosity[0][0][fineCellIndex] * elementSubRegionVolumes[fineCellIndex];
         });
         porosity[0][1][aggregateIndex] /= aggregateVolumes[aggregateIndex];
-        std::cout << "Porosity in aggregate : " << porosity[0][1][aggregateIndex] << std::endl;
     }
   });
 

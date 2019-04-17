@@ -211,7 +211,6 @@ void DomainPartition::GenerateSetsOnAggregates( GeometricObjectManager const * c
   std::cout << "Attempt to generate set on aggregate region " << aggregateRegion->getName() << std::endl;
     for( auto & setName : setNames )
     {
-        std::cout << "setname seconds pass : " << setName << std::endl;
 
       dataRepository::ManagedGroup * elementSets = aggregateRegion->sets();
       set<localIndex> & targetSet = elementSets->RegisterViewWrapper< set<localIndex> >(setName)->reference();
@@ -223,7 +222,6 @@ void DomainPartition::GenerateSetsOnAggregates( GeometricObjectManager const * c
         {
           if( object->IsCoordInObject(aggregateCenters[k]) )
           {
-            std::cout << "found something inside " << std::endl;
             targetSet.insert(k);
           }
         }
@@ -299,7 +297,8 @@ void DomainPartition::SetupCommunications()
 
   CommunicationTools::FindGhosts( meshLevel, allNeighbors );
 
-
+  std::cout << "FIND GHOST " << std::endl;
+//  GEOS_ERROR_IF(true,"error ghost");
 
 
   faceManager->SortAllFaceNodes( nodeManager, meshLevel->getElemManager() );
