@@ -111,6 +111,25 @@ public:
 
   void ComputeGhosts();
 
+  void SetFineCellCenter( localIndex i, R1Tensor const & center)
+  {
+    m_fineCellCenters[i] = center;
+  }
+
+  void SetFineCellVolume( localIndex i, real64 volume)
+  {
+    m_fineCellVolumes[i] = volume;
+  }
+   const array1d < R1Tensor > & GetFineCellCenters() const
+   {
+     return m_fineCellCenters;
+   }
+
+   const array1d < real64 > & GetFineCellVolumes() const
+   {
+     return m_fineCellVolumes;
+   }
+
 private:
   /// The elements to nodes relation is one to one relation.
   NodeMapType  m_toNodesRelation;
@@ -119,6 +138,10 @@ private:
   array1d< localIndex > m_fineToCoarse;
 
   array1d< localIndex > m_fineByAggregates;
+
+  array1d< R1Tensor > m_fineCellCenters;
+
+  array1d< real64 > m_fineCellVolumes;
 
   /// Number of fine cells per aggregate
   array1d< localIndex > m_nbFineCellsPerCoarseCell;

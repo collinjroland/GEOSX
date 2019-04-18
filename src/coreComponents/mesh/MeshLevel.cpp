@@ -65,6 +65,7 @@ void MeshLevel::GenerateAdjacencyLists( localIndex_array & seedNodeList,
                                         ElementRegionManager::ElementViewAccessor<ReferenceWrapper<localIndex_array>>& elementAdjacencyList,
                                         integer const depth )
 {
+  GEOS_LOG_RANK_0("depth = " << depth);
   NodeManager * const nodeManager = getNodeManager();
 
   array1d<array1d<localIndex>> const & nodeToElementRegionList = nodeManager->elementRegionList();
@@ -96,11 +97,14 @@ void MeshLevel::GenerateAdjacencyLists( localIndex_array & seedNodeList,
   {
     for( auto const nodeIndex : nodeAdjacencySet )
     {
+      GEOS_LOG_RANK_0(" nodeToElementRegionList[nodeIndex].size() : "<<nodeToElementRegionList[nodeIndex].size()) ;
+      GEOS_LOG_RANK_0(" nodeIndex : "<< nodeIndex) ;
       for( localIndex b=0 ; b<nodeToElementRegionList[nodeIndex].size() ; ++b )
       {
         localIndex const regionIndex = nodeToElementRegionList[nodeIndex][b];
         localIndex const subRegionIndex = nodeToElementSubRegionList[nodeIndex][b];
         localIndex const elementIndex = nodeToElementList[nodeIndex][b];
+      //GEOS_LOG_RANK_0(regionIndex << " " << subRegionIndex << " " << elementIndex) ;
         elementAdjacencySet[regionIndex][subRegionIndex].insert(elementIndex);
       }
     }

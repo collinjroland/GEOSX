@@ -534,6 +534,7 @@ void CommunicationTools::FindGhosts( MeshLevel * const meshLevel,
 
   for( auto & neighbor : neighbors )
   {
+    GEOS_LOG_RANK("finding ghosts for " << neighbor.NeighborRank());
     neighbor.FindAndPackGhosts( false, 1, meshLevel, commID );
   }
 

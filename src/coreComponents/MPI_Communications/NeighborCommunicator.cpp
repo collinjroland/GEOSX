@@ -315,6 +315,8 @@ void NeighborCommunicator::FindAndPackGhosts( bool const contactActive,
     elementAdjacencyList =
       elemManager.ConstructReferenceAccessor<localIndex_array>( ObjectManagerBase::viewKeyStruct::adjacencyListString,
                                                            std::to_string( this->m_neighborRank ) );
+    GEOS_LOG_RANK_0("==================Contruct Element Adjacency List ===========================");
+    GEOS_LOG_RANK_0(elementAdjacencyList.size() << " " << elementAdjacencyList[0].size());
 
     mesh->GenerateAdjacencyLists( nodeNeighborData->getReference<localIndex_array>( nodeManager.viewKeys.matchedPartitionBoundaryObjects ),
                                   nodeAdjacencyList,
