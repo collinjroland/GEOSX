@@ -74,7 +74,7 @@ public:
     static constexpr auto constitutiveGroupingString = "ConstitutiveGrouping";
     static constexpr auto constitutiveMapString = "ConstitutiveMap";
 
-
+    static constexpr auto aggregateIndexString = "aggregateIndex";
 
     dataRepository::ViewKey constitutiveGrouping  = { constitutiveGroupingString };
     dataRepository::ViewKey constitutiveMap       = { constitutiveMapString };
@@ -105,11 +105,7 @@ private:
   map<localIndex, array1d<globalIndex> > m_unmappedGlobalIndicesInNodelist;
   map<localIndex, array1d<globalIndex> > m_unmappedGlobalIndicesInFacelist;
 
-  array1d< localIndex > m_aggregateIndex;
-
-  array1d< real64 > m_aggregateVolume;
-
-  array1d< R1Tensor > m_aggregateCenter;
+  array1d< globalIndex > m_aggregateIndex;
 
   template< bool DOPACK >
   localIndex PackUpDownMapsPrivate( buffer_unit_type * & buffer,

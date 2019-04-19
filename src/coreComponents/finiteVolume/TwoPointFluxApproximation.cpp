@@ -180,7 +180,8 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
   ElementRegionManager * const elemManager = mesh->getElemManager();
   ElementRegion * const elemRegion = elemManager->GetRegion(0); // TODO : still one region / elemsubregion
   AggregateElementSubRegion * const aggregateElement = elemRegion->GetSubRegion("coarse")->group_cast< AggregateElementSubRegion * >();
-  const array1d< localIndex > & fineToCoarse = aggregateElement->GetFineToCoarseMap();
+  auto aggregateGlobalIndex = elemManager->ConstructViewAccessor<array1d<globalIndex>, arrayView1d<globalIndex>>( CellElementSubRegion::viewKeyStruct::aggregateIndexString );
+  //const array1d< localIndex > & fineToCoarse = aggregateElement->GetFineToCoarseMap();
   // TODO : will it work for fractures ? (no)
 
   array1d<CellDescriptor> stencilCells(2);
@@ -197,8 +198,8 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
     {
       CellDescriptor const & cell1 = stencil.connectedIndex(0);
       CellDescriptor const & cell2 = stencil.connectedIndex(1);
-      localIndex aggregateNumber1 = fineToCoarse[cell1.index];
-      localIndex aggregateNumber2 = fineToCoarse[cell2.index];
+      localIndex aggregateNumber1 = aggregateElement->m_globalToLocalMap.at(aggregateGlobalIndex[cell1.region][cell1.subRegion][cell1.index]);
+      localIndex aggregateNumber2 = aggregateElement->m_globalToLocalMap.at(aggregateGlobalIndex[cell2.region][cell2.subRegion][cell2.index]);
       if( aggregateNumber1 != aggregateNumber2 && interfaces.find(std::make_pair(aggregateNumber1,aggregateNumber2)) == interfaces.end()  && interfaces.find(std::make_pair(aggregateNumber2,aggregateNumber1)) == interfaces.end()) // We find two adjacent aggregates TODO maybe find a clever way to iterate between coarse interfaces ?
       {
         stencilCells[0] = { cell1.region, 1, aggregateNumber1 }; // We can consider here that there is only 1 subregion
@@ -226,6 +227,21 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
         int count =0;
 
         /// Setup the least square system
+        /*
+        GEOS_LOG_RANK_0("================================================+");
+        GEOS_LOG_RANK_0("Number of aggregates : "<< aggregateElement->size());
+          GEOS_LOG_RANK_0("Number of ghosts : " << aggregateElement->GetNumberOfGhosts());
+          GEOS_LOG_RANK_0("Number of fine in "<<aggregateNumber1 << " : " << aggregateElement->GetNbCellsPerAggregate(aggregateNumber1));
+          GEOS_LOG_RANK_0("Number of fine in "<<aggregateNumber2 << " : " << aggregateElement->GetNbCellsPerAggregate(aggregateNumber2));
+        if( aggregateElement->m_ghostRank(aggregateNumber1) >=0)
+        {
+          GEOS_LOG_RANK_0(aggregateNumber1 << "is ghost");
+        }
+        if( aggregateElement->m_ghostRank(aggregateNumber2) >=0)
+        {
+          GEOS_LOG_RANK_0(aggregateNumber2 << "is ghost");
+        }
+          */
         aggregateElement->forFineCellsInAggregate( aggregateNumber1,
                                                    [&] ( localIndex fineCellIndex )
         {
@@ -233,6 +249,7 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
           A(count,1) = pressure2[cell1.region][cell1.subRegion][fineCellIndex];
           A(count,2) = pressure3[cell1.region][cell1.subRegion][fineCellIndex];
           A(count,3) = 1.;
+          GEOS_ERROR_IF(fineCellIndex >= elemRegion->GetSubRegion(cell1.subRegion)->size(),"error");
           R1Tensor barycenterFineCell = elemRegion->GetSubRegion(cell1.subRegion)->getElementCenter()[fineCellIndex];
           pTarget(count++) = barycenterFineCell[0]*barycenter1[0]
                              + barycenterFineCell[1]*barycenter1[1]
@@ -245,7 +262,7 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
           A(count,1) = pressure2[cell2.region][cell2.subRegion][fineCellIndex];
           A(count,2) = pressure3[cell2.region][cell2.subRegion][fineCellIndex];
           A(count,3) = 1.;
-          R1Tensor barycenterFineCell = elemRegion->GetSubRegion(cell1.subRegion)->getElementCenter()[fineCellIndex];
+          R1Tensor barycenterFineCell = elemRegion->GetSubRegion(cell2.subRegion)->getElementCenter()[fineCellIndex];
           pTarget(count++) = barycenterFineCell[0]*barycenter1[0]
                              + barycenterFineCell[1]*barycenter1[1]
                              + barycenterFineCell[2]*barycenter1[2];
@@ -296,8 +313,8 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
           {
             CellDescriptor const & cell1Bis = stencilBis.connectedIndex(0);
             CellDescriptor const & cell2Bis = stencilBis.connectedIndex(1);
-            localIndex aggregateNumber1Bis = fineToCoarse[cell1Bis.index];
-            localIndex aggregateNumber2Bis = fineToCoarse[cell2Bis.index];
+            localIndex aggregateNumber1Bis = aggregateElement->m_globalToLocalMap.at(aggregateGlobalIndex[cell1Bis.region][cell1Bis.subRegion][cell1Bis.index]);
+            localIndex aggregateNumber2Bis = aggregateElement->m_globalToLocalMap.at(aggregateGlobalIndex[cell2Bis.region][cell2Bis.subRegion][cell2Bis.index]);
             if( aggregateNumber1Bis == aggregateNumber1 &&
                 aggregateNumber2Bis == aggregateNumber2 ) // TODO clever way to find the interfaces of adjacent fine cells within aggregates?
             {
@@ -320,6 +337,7 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
         for( localIndex i = 0; i < 2; i++ )
         {
           stencilWeights[i] = std::fabs(coarseFlowRate[i] / ( coarseAveragePressure1 - coarseAveragePressure2 )) * std::pow(-1,i) ; // TODO sign ?
+          GEOS_LOG_RANK_0("transmissi : " << stencilWeights[i]);
         }
         coarseStencil.add(stencilCells.data(), stencilCells, stencilWeights, 0.);
         interfaces.insert(std::make_pair(aggregateNumber1, aggregateNumber2));

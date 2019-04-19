@@ -534,7 +534,6 @@ void CommunicationTools::FindGhosts( MeshLevel * const meshLevel,
 
   for( auto & neighbor : neighbors )
   {
-    GEOS_LOG_RANK("finding ghosts for " << neighbor.NeighborRank());
     neighbor.FindAndPackGhosts( false, 1, meshLevel, commID );
   }
 
@@ -561,8 +560,8 @@ void CommunicationTools::FindGhosts( MeshLevel * const meshLevel,
     for( localIndex esr=0 ; esr<elemRegion->numSubRegions() ; ++esr )
     {
       ElementSubRegionBase * const subRegion = elemRegion->GetSubRegion(esr);
-      std::cout << "GHOST BUSTER " << subRegion->getName() << std::endl;
       subRegion->FixUpDownMaps(false);
+      GEOS_LOG_RANK("number of ghost " << subRegion->GetNumberOfGhosts() );
     }
   }
 

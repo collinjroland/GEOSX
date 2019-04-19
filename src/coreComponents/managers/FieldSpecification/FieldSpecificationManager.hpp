@@ -209,7 +209,6 @@ public:
           for( auto & setName : setNames )
           {
             dataRepository::ViewWrapper<set<localIndex> > const * const setWrapper = setGroup->getWrapper<set<localIndex> >( setName );
-            std::cout << "setName : " << setName << " applied on target " << targetGroup->getName() << std::endl;
             if( setWrapper != nullptr )
             {
               set<localIndex> const & targetSet = setWrapper->reference();

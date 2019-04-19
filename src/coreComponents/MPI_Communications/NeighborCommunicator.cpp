@@ -316,7 +316,6 @@ void NeighborCommunicator::FindAndPackGhosts( bool const contactActive,
       elemManager.ConstructReferenceAccessor<localIndex_array>( ObjectManagerBase::viewKeyStruct::adjacencyListString,
                                                            std::to_string( this->m_neighborRank ) );
     GEOS_LOG_RANK_0("==================Contruct Element Adjacency List ===========================");
-    GEOS_LOG_RANK_0(elementAdjacencyList.size() << " " << elementAdjacencyList[0].size());
 
     mesh->GenerateAdjacencyLists( nodeNeighborData->getReference<localIndex_array>( nodeManager.viewKeys.matchedPartitionBoundaryObjects ),
                                   nodeAdjacencyList,
@@ -329,6 +328,7 @@ void NeighborCommunicator::FindAndPackGhosts( bool const contactActive,
   ElementRegionManager::ElementViewAccessor<arrayView1d<localIndex>> const elementAdjacencyList =
     elemManager.ConstructViewAccessor<array1d<localIndex>, arrayView1d<localIndex>>( ObjectManagerBase::viewKeyStruct::adjacencyListString,
                                                            std::to_string( this->m_neighborRank ) );
+  GEOS_LOG_RANK_0("JEUDI new size : ?" << elementAdjacencyList[0][0].size());
 
   int bufferSize = 0;
 
@@ -368,6 +368,7 @@ void NeighborCommunicator::FindAndPackGhosts( bool const contactActive,
   packedSize += edgeManager.Pack( sendBufferPtr, {}, edgeAdjacencyList, 0 );
   packedSize += faceManager.Pack( sendBufferPtr, {}, faceAdjacencyList, 0 );
   packedSize += elemManager.Pack( sendBufferPtr, {}, elementAdjacencyList );
+  GEOS_LOG_RANK_0("JEUDI new size : ?" << elementAdjacencyList[0][0].size());
 
 
   GEOS_ERROR_IF( bufferSize != packedSize, "Allocated Buffer Size is not equal to packed buffer size" );

@@ -343,22 +343,6 @@ void ElementRegion::GenerateAggregates( FaceManager const * const faceManager, N
   {
     partsGEOS[fineCellIndex] = integer_conversion< localIndex >( parts[fineCellIndex] );
   }
-  this->forElementSubRegions( [&]( auto * elementSubRegion ) -> void
-  {
-      auto & aggregateIndexSave =
-        elementSubRegion->template getWrapper< array1d< localIndex > > ("aggregateIndex")->reference();
-      auto & aggregateVolumeSave =
-        elementSubRegion->template getWrapper< array1d< real64 > > ("aggregateVolume")->reference();
-      auto & aggregateCenterSave =
-        elementSubRegion->template getWrapper< array1d< R1Tensor > > ("aggregateCenter")->reference();
-      for(int i = 0; i < elementSubRegion->size() ;i++)
-      {
-        aggregateIndexSave[i] = partsGEOS[i];
-        localIndex correspondingAggregate = partsGEOS[i];
-        aggregateVolumeSave[i] = aggregateVolumes[correspondingAggregate];
-        aggregateCenterSave[i] = aggregateBarycenters[correspondingAggregate];
-      }
-  });
   aggregateSubRegion->CreateFromFineToCoarseMap(nbAggregates, partsGEOS, aggregateBarycenters, aggregateVolumes);
 }
 

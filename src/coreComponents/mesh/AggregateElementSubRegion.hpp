@@ -40,20 +40,23 @@ public:
   {
     return AggregateElementSubRegion::CatalogName();
   }
+  struct viewKeyStruct : public ElementSubRegionBase::viewKeyStruct
+  {
+    static constexpr auto fineByAggregates = "fineByAggregates";
+  };
 
   template< typename LAMBDA >
   void forFineCellsInAggregate( localIndex aggregateIndex, LAMBDA lambda )
   {
-    for(localIndex fineCell = m_nbFineCellsPerCoarseCell[aggregateIndex]; 
-        fineCell < m_nbFineCellsPerCoarseCell[aggregateIndex+1]; fineCell++)
+    for(localIndex fineCell :  m_fineByAggregates[aggregateIndex])
     {
-      lambda(m_fineByAggregates[fineCell]);
+      lambda(fineCell);
     }
   }
 
   localIndex GetNbCellsPerAggregate( localIndex aggregateIndex ) const
   {
-    return m_nbFineCellsPerCoarseCell[aggregateIndex + 1] - m_nbFineCellsPerCoarseCell[aggregateIndex];
+    return m_fineByAggregates[aggregateIndex].size();
   }
 
   AggregateElementSubRegion( string const & name,
@@ -66,10 +69,12 @@ public:
                                   array1d< R1Tensor > const & barycenters,
                                   array1d< real64 > const & volumes);
 
+  /*
   const array1d< localIndex >& GetFineToCoarseMap()
   {
     return m_fineToCoarse;
   }
+    */
   
   virtual R1Tensor const & calculateElementCenter( localIndex k,
                                                    NodeManager const & nodeManager,
@@ -135,16 +140,16 @@ private:
   NodeMapType  m_toNodesRelation;
 
   /// Relation between fine and coarse elements ordered by aggregates
-  array1d< localIndex > m_fineToCoarse;
+  //array1d< localIndex > m_fineToCoarse;
 
-  array1d< localIndex > m_fineByAggregates;
+  array1d< array1d < localIndex > > m_fineByAggregates;
 
   array1d< R1Tensor > m_fineCellCenters;
 
   array1d< real64 > m_fineCellVolumes;
 
   /// Number of fine cells per aggregate
-  array1d< localIndex > m_nbFineCellsPerCoarseCell;
+  //array1d< localIndex > m_nbFineCellsPerCoarseCell;
 };
 }
 

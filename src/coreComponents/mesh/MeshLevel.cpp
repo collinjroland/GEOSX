@@ -65,7 +65,6 @@ void MeshLevel::GenerateAdjacencyLists( localIndex_array & seedNodeList,
                                         ElementRegionManager::ElementViewAccessor<ReferenceWrapper<localIndex_array>>& elementAdjacencyList,
                                         integer const depth )
 {
-  GEOS_LOG_RANK_0("depth = " << depth);
   NodeManager * const nodeManager = getNodeManager();
 
   array1d<array1d<localIndex>> const & nodeToElementRegionList = nodeManager->elementRegionList();
@@ -97,14 +96,11 @@ void MeshLevel::GenerateAdjacencyLists( localIndex_array & seedNodeList,
   {
     for( auto const nodeIndex : nodeAdjacencySet )
     {
-      GEOS_LOG_RANK_0(" nodeToElementRegionList[nodeIndex].size() : "<<nodeToElementRegionList[nodeIndex].size()) ;
-      GEOS_LOG_RANK_0(" nodeIndex : "<< nodeIndex) ;
       for( localIndex b=0 ; b<nodeToElementRegionList[nodeIndex].size() ; ++b )
       {
         localIndex const regionIndex = nodeToElementRegionList[nodeIndex][b];
         localIndex const subRegionIndex = nodeToElementSubRegionList[nodeIndex][b];
         localIndex const elementIndex = nodeToElementList[nodeIndex][b];
-      //GEOS_LOG_RANK_0(regionIndex << " " << subRegionIndex << " " << elementIndex) ;
         elementAdjacencySet[regionIndex][subRegionIndex].insert(elementIndex);
       }
     }
@@ -165,17 +161,34 @@ void MeshLevel::GenerateAdjacencyLists( localIndex_array & seedNodeList,
   {
     ElementRegion const * const elemRegion = elemManager->GetRegion(kReg);
 
-    for( typename dataRepository::indexType kSubReg=0 ; kSubReg<elemRegion->numSubRegions() ; ++kSubReg  )
+    localIndex nbGhostAggregates = 0;
+    const ElementSubRegionBase * aggRegion = elemRegion->GetSubRegion("coarse");
+    localIndex aggRegionIndex = aggRegion->getIndexInParent();
+    elemRegion->forElementSubRegionsIndex<CellElementSubRegion>([&]( localIndex const kSubReg, auto const * const subRegion )
     {
+      auto & aggregateIndexSave =
+        subRegion->template getWrapper< array1d< globalIndex > > (CellElementSubRegion::viewKeyStruct::aggregateIndexString)->reference();
+      GEOS_LOG_RANK("DEBUG JEUDI "<< aggregateIndexSave.size());
       elementAdjacencyList[kReg][kSubReg].get().clear();
       elementAdjacencyList[kReg][kSubReg].get().resize( integer_conversion<localIndex>(elementAdjacencySet[kReg][kSubReg].size()) );
       std::copy( elementAdjacencySet[kReg][kSubReg].begin(),
                  elementAdjacencySet[kReg][kSubReg].end(),
                  elementAdjacencyList[kReg][kSubReg].get().begin() );
+      std::set< globalIndex> uniqueAggregate;
+      for( localIndex i = 0 ; i < elementAdjacencyList[kReg][kSubReg].get().size(); i++ )
+      {
+        globalIndex aggregateIndex = aggregateIndexSave[elementAdjacencyList[kReg][kSubReg][i]];
+        GEOS_LOG_RANK(i << " " << elementAdjacencyList[kReg][kSubReg][i]);
+        if( uniqueAggregate.find(aggregateIndex) == uniqueAggregate.end())
+        {
+          elementAdjacencyList[kReg][aggRegionIndex].get().push_back(aggRegion->m_globalToLocalMap.at(aggregateIndex));
+          uniqueAggregate.insert(aggregateIndex);
+        }
+      }
+    });
 
-    }
+    // Now dealing with aggregates
   }
-
 }
 
 } /* namespace geosx */
