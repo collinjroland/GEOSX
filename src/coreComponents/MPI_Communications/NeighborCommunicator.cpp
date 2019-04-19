@@ -492,7 +492,7 @@ void NeighborCommunicator::RebuildSyncLists( MeshLevel * const mesh,
   for( localIndex er=0 ; er<elemManager.numRegions() ; ++er )
   {
     ElementRegion const * const elemRegion = elemManager.GetRegion( er );
-    elemRegion->forElementSubRegionsIndex([&]( localIndex const esr, ElementSubRegionBase const * const subRegion )
+    elemRegion->forElementSubRegionsIndex<CellElementSubRegion, AggregateElementSubRegion>([&]( localIndex const esr, ElementSubRegionBase const * const subRegion )
     {
       bufferSize+= bufferOps::Pack<false>( sendBufferPtr,
                                            elementGhostToReceive[er][esr],
@@ -528,7 +528,7 @@ void NeighborCommunicator::RebuildSyncLists( MeshLevel * const mesh,
   for( localIndex er=0 ; er<elemManager.numRegions() ; ++er )
   {
     ElementRegion const * const elemRegion = elemManager.GetRegion( er );
-    elemRegion->forElementSubRegionsIndex([&]( localIndex const esr, ElementSubRegionBase const * const subRegion )
+    elemRegion->forElementSubRegionsIndex<CellElementSubRegion, AggregateElementSubRegion>([&]( localIndex const esr, ElementSubRegionBase const * const subRegion )
     {
       packedSize+= bufferOps::Pack<true>( sendBufferPtr,
                                           elementGhostToReceive[er][esr],
@@ -583,7 +583,7 @@ void NeighborCommunicator::RebuildSyncLists( MeshLevel * const mesh,
   for( localIndex er=0 ; er<elemManager.numRegions() ; ++er )
   {
     ElementRegion * const elemRegion = elemManager.GetRegion( er );
-    elemRegion->forElementSubRegionsIndex([&]( localIndex const esr, ElementSubRegionBase * const subRegion )
+    elemRegion->forElementSubRegionsIndex<CellElementSubRegion, AggregateElementSubRegion>([&]( localIndex const esr, ElementSubRegionBase * const subRegion )
     {
       array1d<globalIndex> unmappedIndices;
       unpackedSize+= bufferOps::Unpack( receiveBufferPtr,
@@ -658,7 +658,7 @@ int NeighborCommunicator::PackCommSizeForSync( std::map<string, string_array > c
     for( localIndex er=0 ; er<elemManager.numRegions() ; ++er )
     {
       ElementRegion const * const elemRegion = elemManager.GetRegion( er );
-      elemRegion->forElementSubRegionsIndex([&]( localIndex const esr, auto const * const subRegion )
+      elemRegion->forElementSubRegionsIndex<CellElementSubRegion, AggregateElementSubRegion>([&]( localIndex const esr, auto const * const subRegion )
       {
         bufferSize += subRegion->PackSize( fieldNames.at( "elems" ), elementGhostToSend[er][esr], 0 );
       });
@@ -733,7 +733,7 @@ void NeighborCommunicator::PackCommBufferForSync( std::map<string, string_array 
     for( localIndex er=0 ; er<elemManager.numRegions() ; ++er )
     {
       ElementRegion const * const elemRegion = elemManager.GetRegion( er );
-      elemRegion->forElementSubRegionsIndex([&]( localIndex const esr, auto const * const subRegion )
+      elemRegion->forElementSubRegionsIndex<AggregateElementSubRegion, CellElementSubRegion>([&]( localIndex const esr, auto const * const subRegion )
       {
         packedSize += subRegion->Pack( sendBufferPtr, fieldNames.at( "elems" ), elementGhostToSend[er][esr], 0 );
       });
@@ -811,7 +811,7 @@ void NeighborCommunicator::UnpackBufferForSync( std::map<string, string_array > 
     for( localIndex er=0 ; er<elemManager.numRegions() ; ++er )
     {
       ElementRegion * const elemRegion = elemManager.GetRegion( er );
-      elemRegion->forElementSubRegionsIndex([&]( localIndex const esr,
+      elemRegion->forElementSubRegionsIndex<CellElementSubRegion, AggregateElementSubRegion>([&]( localIndex const esr,
                                           auto * const subRegion )
       {
         unpackedSize += subRegion->Unpack( receiveBufferPtr, elementGhostToReceive[er][esr], 0 );

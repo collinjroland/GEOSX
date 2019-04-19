@@ -56,6 +56,15 @@ void DownScaleField::Execute( real64 const time_n,
   auto pressure =
     elemManager->ConstructViewAccessor<array1d<real64>, arrayView1d<real64>>( m_fieldName ); //TODO harcoded
   AggregateElementSubRegion * aggregateRegion = elemManager->GetRegion(0)->GetSubRegion("coarse")->group_cast< AggregateElementSubRegion *>();
+  CellElementSubRegion * fineRegion = elemManager->GetRegion(0)->GetSubRegion(0)->group_cast< CellElementSubRegion *>();
+      auto & aggregateIndexSave =
+        fineRegion->template getWrapper< array1d< globalIndex > > (CellElementSubRegion::viewKeyStruct::aggregateIndexString)->reference();
+  for( localIndex fineCellIndex  = 0; fineCellIndex < fineRegion->size(); fineCellIndex++)
+  {
+    localIndex aggregateIndex = aggregateRegion->m_globalToLocalMap.at(aggregateIndexSave[fineCellIndex]);
+    pressure[0][0][fineCellIndex] = pressure[0][1][aggregateIndex];
+  }
+  /*
   for( localIndex aggregateIndex = 0; aggregateIndex < aggregateRegion->size(); aggregateIndex++ )
   {
     aggregateRegion->forFineCellsInAggregate( aggregateIndex,
@@ -66,6 +75,7 @@ void DownScaleField::Execute( real64 const time_n,
     });
 
   }
+  */
 }
 
 REGISTER_CATALOG_ENTRY( TaskBase, DownScaleField, std::string const &, ManagedGroup * const )

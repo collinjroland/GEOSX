@@ -77,7 +77,7 @@ void SinglePhaseFlow::RegisterDataOnMesh(ManagedGroup * const MeshBodies)
       subRegion->RegisterViewWrapper< array1d<real64> >( viewKeyStruct::densityString );
       subRegion->RegisterViewWrapper< array1d<real64> >( viewKeyStruct::porosityString )->setPlotLevel(PlotLevel::LEVEL_1);
       subRegion->RegisterViewWrapper< array1d<real64> >( viewKeyStruct::oldPorosityString );
-      subRegion->RegisterViewWrapper< array1d<globalIndex> >( viewKeyStruct::blockLocalDofNumberString );
+      subRegion->RegisterViewWrapper< array1d<globalIndex> >( viewKeyStruct::blockLocalDofNumberString )->setPlotLevel(PlotLevel::LEVEL_0);
     } );
 
     meshLevel->getElemManager()->forElementSubRegions<AggregateElementSubRegion>( [&] (  auto * const aggregateRegion) 
@@ -384,6 +384,8 @@ void SinglePhaseFlow::SetupSystem ( DomainPartition * const domain,
     numGhostRows += subRegionGhosts;
     numLocalRows += subRegion->size() - subRegionGhosts;
   } );
+  GEOS_LOG_RANK("num ghost row " << numGhostRows);
+  GEOS_LOG_RANK("num local row "<< numLocalRows);
 
   SetNumRowsAndTrilinosIndices( mesh,
                                 numLocalRows,
@@ -425,7 +427,6 @@ void SinglePhaseFlow::SetupSystem ( DomainPartition * const domain,
   int mpiRank;
   MPI_Comm_size( MPI_COMM_GEOSX, &mpiSize );
   MPI_Comm_rank( MPI_COMM_GEOSX, &mpiRank );
-  sparsity->Print(std::cout);
   sparsity->GlobalAssemble();
   sparsity->OptimizeStorage();
 
