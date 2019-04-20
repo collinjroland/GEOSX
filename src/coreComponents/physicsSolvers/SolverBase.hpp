@@ -440,7 +440,6 @@ public:
   {
     static_assert( std::is_same<typename std::remove_cv<MESH>::type, MeshLevel>::value, "Invalid MESH type" );
 
-    std::cout << 1 << std::endl;
     auto * const elemManager = mesh->getElemManager();
     if( !m_aggregateMode )
     {
@@ -476,7 +475,6 @@ public:
   typename std::enable_if<callable_as<MESH, LAMBDA, SubregionFuncIndex>::value, void>::type
   applyToSubRegions( MESH * const mesh, LAMBDA && lambda ) const
   {
-    std::cout << 2 << std::endl;
     static_assert( std::is_same<typename std::remove_cv<MESH>::type, MeshLevel>::value, "Invalid MESH type" );
 
     auto * const elemManager = mesh->getElemManager();
@@ -508,7 +506,6 @@ public:
   applyToSubRegions( MESH * const mesh, LAMBDA && lambda ) const
   {
     static_assert( std::is_same<typename std::remove_cv<MESH>::type, MeshLevel>::value, "Invalid MESH type" );
-    std::cout << 3 << std::endl;
 
     auto * const elemManager = mesh->getElemManager();
     if( !m_aggregateMode )

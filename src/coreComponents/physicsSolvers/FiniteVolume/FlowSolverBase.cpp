@@ -85,16 +85,13 @@ void FlowSolverBase::RegisterDataOnMesh( ManagedGroup * const MeshBodies )
       subRegion->RegisterViewWrapper< array1d<real64> >( viewKeyStruct::referencePorosityString )->setPlotLevel(PlotLevel::LEVEL_0);
       subRegion->RegisterViewWrapper< array1d<R1Tensor> >( viewKeyStruct::permeabilityString )->setPlotLevel(PlotLevel::LEVEL_0);
       auto toto = subRegion->RegisterViewWrapper< array1d<real64> >( viewKeyStruct::gravityDepthString )->setApplyDefaultValue( 0.0 );
-     std::cout << "size of the region "<< toto->size() << std::endl;
     });
 
     mesh->getElemManager()->forElementSubRegions<AggregateElementSubRegion>( [&] (  auto * const aggregateRegion) 
     {
-      std::cout << "Aggretion sub region name " << aggregateRegion->getName() << std::endl;
       aggregateRegion->template RegisterViewWrapper< array1d<real64> >( viewKeyStruct::referencePorosityString )->setPlotLevel(PlotLevel::LEVEL_0);
       aggregateRegion->template RegisterViewWrapper< array1d<R1Tensor> >( viewKeyStruct::permeabilityString )->setPlotLevel(PlotLevel::LEVEL_0);
      auto toto = aggregateRegion->template RegisterViewWrapper< array1d<real64> >( viewKeyStruct::gravityDepthString )->setApplyDefaultValue( 0.0 );
-     std::cout << "size of the region "<< toto->size() << " " << aggregateRegion->size() << std::endl;
     });
 
     FaceManager * const faceManager = mesh->getFaceManager();

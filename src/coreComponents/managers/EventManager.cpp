@@ -194,6 +194,7 @@ void EventManager::Run(dataRepository::ManagedGroup * domain)
 
       if (eventForecast <= 0)
       {
+        std::cout << "EXECUTRE "<< subEvent->getName() << std::endl;
         subEvent->Execute(time, dt, cycle, 0, 0, domain);
       }
 

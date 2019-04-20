@@ -256,14 +256,6 @@ void ElementRegion::GenerateAggregates( FaceManager const * const faceManager, N
       idx_t const ei0  = integer_conversion< idx_t >( elemList[kf][0] + offsetSubRegions[esr0] );
       localIndex const esr1 = elemSubRegionList[kf][1];
       idx_t const ei1  = integer_conversion< idx_t >( elemList[kf][1] + offsetSubRegions[esr1] );
-      if( ei0 >= nbCellElements )
-      {
-        std::cout << ei0 << " is too biig" << std::endl;
-      }
-      if( ei1 >= nbCellElements )
-      {
-        std::cout << ei1 << " is too biig" << std::endl;
-      }
       graph.insertNonZero(ei0, ei1);
       graph.insertNonZero(ei1, ei0);
       nbConnections++;
@@ -326,7 +318,6 @@ void ElementRegion::GenerateAggregates( FaceManager const * const faceManager, N
   this->forElementSubRegions( [&]( auto * const elementSubRegion ) -> void
   {
     localIndex const subRegionIndex = elementSubRegion->getIndexInParent();
-    std::cout << "subRegion size : " << elementSubRegion->size() << std::endl;
     for(localIndex cellIndex = 0; cellIndex< elementSubRegion->size() ; cellIndex++)
     {
       if( elementSubRegion->GhostRank()[cellIndex] >= 0 )

@@ -384,8 +384,6 @@ void SinglePhaseFlow::SetupSystem ( DomainPartition * const domain,
     numGhostRows += subRegionGhosts;
     numLocalRows += subRegion->size() - subRegionGhosts;
   } );
-  GEOS_LOG_RANK("num ghost row " << numGhostRows);
-  GEOS_LOG_RANK("num local row "<< numLocalRows);
 
   SetNumRowsAndTrilinosIndices( mesh,
                                 numLocalRows,
@@ -422,7 +420,6 @@ void SinglePhaseFlow::SetupSystem ( DomainPartition * const domain,
   SetSparsityPattern( domain, sparsity );
 
   // assemble the global sparsity matrix
-  GEOS_LOG_RANK("sparsity->NumMyRows() : "<< sparsity->NumMyRows());
   int mpiSize;
   int mpiRank;
   MPI_Comm_size( MPI_COMM_GEOSX, &mpiSize );
@@ -1297,6 +1294,7 @@ void SinglePhaseFlow::SolveSystem( EpetraBlockSystem * const blockSystem,
     GEOS_LOG_RANK("After SinglePhaseFlow::SolveSystem");
     GEOS_LOG_RANK("\nsolution\n" << *solution);
   }
+  std::cout << "after solve 1 :  " << m_pressure[0][0][0] << std::endl;
 }
 
 void SinglePhaseFlow::ResetStateToBeginningOfStep( DomainPartition * const domain )

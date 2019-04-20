@@ -48,6 +48,7 @@ public:
   {
     constexpr static auto fileString = "file";
     constexpr static auto fieldsToImportString = "fieldsToImport";
+    constexpr static auto scaleString = "scale";
   } viewKeys;
   PAMELAMeshGenerator( const std::string& name,
                        ManagedGroup * const parent );
@@ -102,6 +103,8 @@ private:
   std::unordered_map<std::string, PAMELA::Part<PAMELA::Polyhedron *> * > m_cellBlockUniqueIdToPAMELARegion_;
 
   string_array m_fieldsToImport;
+
+  real64 m_scale;
 
   string m_filePath;
 };

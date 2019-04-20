@@ -106,7 +106,6 @@ void AggregateStencil::Execute( real64 const time_n,
  auto toto =  constitutiveManager->GetGroup("water");
  auto titi =  constitutiveManager->GetGroup("water");
  */
-  std::cout << "ICI C'EST LA LIMITE" << std::endl;
    
 
   

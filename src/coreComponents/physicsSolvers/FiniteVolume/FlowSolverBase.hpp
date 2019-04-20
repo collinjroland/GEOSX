@@ -86,14 +86,12 @@ public:
 
   void updateSolid() 
   {
-    std::cout << "SOLID BEFORE " << m_solidIndex << std::endl; // TODO dirty
     m_solidIndex +=2;
     m_solidName += "1";
   }
 
   void updateFluid() 
   {
-    std::cout << "FLUID BEFORE " << m_fluidIndex << std::endl; // TODO dirty
     m_fluidIndex +=2;
     m_fluidName += "1";
   }

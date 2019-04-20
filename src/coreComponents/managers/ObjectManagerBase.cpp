@@ -484,10 +484,6 @@ localIndex ObjectManagerBase::UnpackGlobalMaps( buffer_unit_type const *& buffer
   localIndex numUnpackedIndices;
   unpackedSize += bufferOps::Unpack( buffer, numUnpackedIndices );
 
-  GEOS_LOG_RANK_0(" numUnpackedIndices for " << groupName << " =  " << numUnpackedIndices);
-  GEOS_LOG_RANK_0("unpackedSize for " << groupName << " =  " << unpackedSize);
-  GEOS_LOG_RANK_0("localToGlobal string for " << groupName << " =  " << localToGlobalString);
-  GEOS_LOG_RANK_0("unpackedSize for " << groupName << " =  " << unpackedSize);
   if( numUnpackedIndices > 0 )
   {
     localIndex_array unpackedLocalIndices;
@@ -538,7 +534,6 @@ localIndex ObjectManagerBase::UnpackGlobalMaps( buffer_unit_type const *& buffer
 
     // figure out new size of object container, and resize it
     const localIndex newSize = oldSize + numNewIndices;
-    GEOS_LOG_RANK_0("resize " <<  groupName << " fron " <<  oldSize << " to " << newSize);
     this->resize( newSize );
 
     // add the new indices to the maps.

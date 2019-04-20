@@ -48,7 +48,6 @@ void DownScaleField::Execute( real64 const time_n,
                          real64 const eventProgress,
                          ManagedGroup * domain )
 {
-  GEOS_LOG_RANK( "DownScaling " + m_fieldName );
   DomainPartition * domainCast = domain->group_cast<DomainPartition*>(domain);
   MeshBody * meshBody = domainCast->getMeshBody(0);
   MeshLevel * meshLevel = meshBody->getMeshLevel(0);

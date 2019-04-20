@@ -341,7 +341,6 @@ ElementRegionManager::UnpackGlobalMaps( buffer_unit_type const * & buffer,
       /// THIS IS WRONG
       localIndex_array & elemList = packList[kReg][esr].get();
 
-      GEOS_LOG_RANK_0("Unpack "<< subRegionName);
       unpackedSize += subRegion->UnpackGlobalMaps( buffer, elemList, 0 );
     });
   }

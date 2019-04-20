@@ -67,13 +67,9 @@ void AggregateElementSubRegion::CreateFromFineToCoarseMap( localIndex nbAggregat
   {
     offsetForGlobalIndex += nbAggregatesPerRank[i];
   }
-  GEOS_LOG_RANK("offset of the subregion " << offsetForGlobalIndex);
-  GEOS_LOG_RANK("size local2global " << this->m_localToGlobalMap.size());
-  GEOS_LOG_RANK("size global2local " << this->m_globalToLocalMap.size());
   for( localIndex i = 0; i < nbAggregates; i++)
   {
     this->m_localToGlobalMap[i] = i + offsetForGlobalIndex;
-     GEOS_LOG_RANK("gloval index " << i << " "<< i + offsetForGlobalIndex);
 //    this->m_globalToLocalMap[i + offsetForGlobalIndex] = i;
   }
   this->ConstructGlobalToLocalMap();
