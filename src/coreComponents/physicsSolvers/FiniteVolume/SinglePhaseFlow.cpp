@@ -208,6 +208,51 @@ void SinglePhaseFlow::InitializePostInitialConditions_PreSubGroups( ManagedGroup
   } );
 }
 
+void SinglePhaseFlow::InitializeAfterAggreg( ManagedGroup * rootGroup )
+{
+  GEOSX_MARK_FUNCTION;
+
+  DomainPartition * domain = rootGroup->group_cast<DomainPartition*>();
+  MeshLevel * mesh = domain->getMeshBody(0)->getMeshLevel(0);
+
+  // Moved the following part from ImplicitStepSetup to here since it only needs to be initialized once
+  // They will be updated in ApplySystemSolution and ImplicitStepComplete, respectively
+
+  applyToSubRegions( mesh, [&] ( localIndex er, localIndex esr,
+                                 ElementRegion * const region,
+                                 ElementSubRegionBase * const subRegion )
+  {
+    UpdateState( subRegion );
+
+    arrayView1d<real64 const> const & poroRef = m_porosityRef[er][esr];
+    arrayView2d<real64 const> const & dens    = m_density[er][esr][m_fluidIndex];
+    arrayView2d<real64 const> const & pvmult  = m_pvMult[er][esr][m_solidIndex];
+
+    arrayView1d<real64> const & poro = m_porosity[er][esr];
+    arrayView1d<real64> const & densOld = m_densityOld[er][esr];
+    arrayView1d<real64> const & poroOld = m_porosityOld[er][esr];
+
+    if( pvmult.size() == poro.size() )
+    {
+      forall_in_range<elemPolicy>( 0, subRegion->size(), GEOSX_LAMBDA ( localIndex ei )
+      {
+        densOld[ei] = dens[ei][0];
+        poro[ei] = poroRef[ei] * pvmult[ei][0];
+        poroOld[ei] = poro[ei];
+      } );
+    }
+    else
+    {
+      forall_in_range<elemPolicy>( 0, subRegion->size(), GEOSX_LAMBDA ( localIndex ei )
+      {
+        densOld[ei] = dens[ei][0];
+        poro[ei] = poroRef[ei];
+        poroOld[ei] = poro[ei];
+      } );
+    }
+  } );
+}
+
 real64 SinglePhaseFlow::SolverStep( real64 const& time_n,
                                     real64 const& dt,
                                     const int cycleNumber,
@@ -1294,7 +1339,10 @@ void SinglePhaseFlow::SolveSystem( EpetraBlockSystem * const blockSystem,
     GEOS_LOG_RANK("After SinglePhaseFlow::SolveSystem");
     GEOS_LOG_RANK("\nsolution\n" << *solution);
   }
-  std::cout << "after solve 1 :  " << m_pressure[0][0][0] << std::endl;
+  if(!m_aggregateMode)
+  {
+  std::cout << "after solve 1 :  " << m_pressure[0][0][6690] << std::endl;
+  }
 }
 
 void SinglePhaseFlow::ResetStateToBeginningOfStep( DomainPartition * const domain )

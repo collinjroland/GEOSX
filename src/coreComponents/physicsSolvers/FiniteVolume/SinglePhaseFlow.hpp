@@ -83,6 +83,7 @@ public:
   static string CatalogName() { return "SinglePhaseFlow"; }
 
   virtual void InitializePreSubGroups(ManagedGroup * const rootGroup) override;
+  void InitializeAfterAggreg(ManagedGroup *rootGroup) ;
 
   virtual void RegisterDataOnMesh(ManagedGroup * const MeshBodies) override;
 

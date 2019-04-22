@@ -100,6 +100,7 @@ void AggregateStencil::Execute( real64 const time_n,
   solver->group_cast< SinglePhaseFlow *>()->switchAggregateMode(true);
   solver->group_cast< SinglePhaseFlow *>()->updateSolid();
   solver->group_cast< SinglePhaseFlow *>()->updateFluid();
+  solver->group_cast< SinglePhaseFlow *>()->InitializeAfterAggreg(domain);
 
   /*
   constitutive::ConstitutiveManager * constitutiveManager = domain->GetGroup<constitutive::ConstitutiveManager>(keys::ConstitutiveManager);

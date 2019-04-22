@@ -144,6 +144,14 @@ void TwoPointFluxApproximation::computeCellStencil( DomainPartition const & doma
         real64 const c2fDistance = cellToFaceVec.Normalize();
 
         // assemble full coefficient tensor from principal axis/components
+        for(int i = 0; i < 3; i++)
+        {
+          if(coefficient[er][esr][ei][i] < 1e-30)
+          {
+            GEOS_LOG_RANK("detect : " << coefficient[er][esr][ei][i]);
+            coefficient[er][esr][ei][i] = 1e-15;
+          }
+        }
         makeFullTensor(coefficient[er][esr][ei], coefTensor);
 
         faceConormal.AijBj(coefTensor, faceNormal);
@@ -187,7 +195,6 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
   array1d<CellDescriptor> stencilCells(2);
   array1d<real64> stencilWeights(2);
 
-  GEOS_ERROR_IF(true, "ghost");
   std::set< std::pair< localIndex, localIndex > > interfaces;
   fineStencil.forAll( [&] ( StencilCollection<CellDescriptor, real64>::Accessor stencil ) //TODO maybe find a clever way to iterate between coarse interfaces ?
   {
@@ -206,14 +213,16 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
         // Now we compute the transmissibilities
         R1Tensor barycenter1 = aggregateElement->getElementCenter()[aggregateNumber1];
         R1Tensor barycenter2 = aggregateElement->getElementCenter()[aggregateNumber2];
+        /*
         std::cout << "======================================"<< std::endl;
         std::cout << "aggregateNumber1 : " << aggregateNumber1 << std::endl;
         std::cout << "aggregateNumber2 : " << aggregateNumber2 << std::endl;
         std::cout << "barycenter1 : " << barycenter1 << std::endl;
         std::cout << "barycenter2 : " << barycenter2 << std::endl;
+        */
         barycenter1 -= barycenter2; // normal between the two aggregates
         barycenter1.Normalize();
-        std::cout << "vector between the two aggregates : " << barycenter1 << std::endl;
+        //std::cout << "vector between the two aggregates : " << barycenter1 << std::endl;
 
         int systemSize = integer_conversion< int >(aggregateElement->GetNbCellsPerAggregate( aggregateNumber1 )
                                                  + aggregateElement->GetNbCellsPerAggregate( aggregateNumber2 ));
@@ -245,11 +254,14 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
           A(count,1) = pressure2[cell1.region][cell1.subRegion][fineCellIndex];
           A(count,2) = pressure3[cell1.region][cell1.subRegion][fineCellIndex];
           A(count,3) = 1.;
+          /*
  std::cout<< "fine cell index : " << fineCellIndex << " "  <<pressure1[cell1.region][cell1.subRegion][fineCellIndex] << " " 
           << pressure2[cell1.region][cell1.subRegion][fineCellIndex] << " "
           << pressure3[cell1.region][cell1.subRegion][fineCellIndex] << std::endl;
+          */
           GEOS_ERROR_IF(fineCellIndex >= elemRegion->GetSubRegion(cell1.subRegion)->size(),"error");
           R1Tensor barycenterFineCell = elemRegion->GetSubRegion(cell1.subRegion)->getElementCenter()[fineCellIndex];
+          //std::cout << "fine cell center : " <<  barycenterFineCell << std::endl;
           pTarget(count++) = barycenterFineCell[0]*barycenter1[0]
                              + barycenterFineCell[1]*barycenter1[1]
                              + barycenterFineCell[2]*barycenter1[2];
@@ -261,10 +273,13 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
           A(count,1) = pressure2[cell2.region][cell2.subRegion][fineCellIndex];
           A(count,2) = pressure3[cell2.region][cell2.subRegion][fineCellIndex];
           A(count,3) = 1.;
+          /*
  std::cout<< "fine cell index : " << fineCellIndex << " "  <<pressure1[cell2.region][cell2.subRegion][fineCellIndex] << " " 
           << pressure2[cell2.region][cell2.subRegion][fineCellIndex] << " "
           << pressure3[cell2.region][cell2.subRegion][fineCellIndex] << std::endl;
+          */
           R1Tensor barycenterFineCell = elemRegion->GetSubRegion(cell2.subRegion)->getElementCenter()[fineCellIndex];
+          //std::cout << "fine cell center : " <<  barycenterFineCell << std::endl;
           pTarget(count++) = barycenterFineCell[0]*barycenter1[0]
                              + barycenterFineCell[1]*barycenter1[1]
                              + barycenterFineCell[2]*barycenter1[2];
@@ -274,18 +289,22 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
         real64  rwork1;
         real64 svd[4];
         int rank;
+        /*
         std::cout << "==A==" << std::endl;
         A.print(std::cout);
         std::cout << "==b==" << std::endl;
         pTarget.print(std::cout);
+        */
 
         // Solve the least square system
         lapack.GELSS(systemSize,4,1,A.values(),A.stride(),pTarget.values(),pTarget.stride(),svd,-1,&rank,&rwork1,-1,&info);
         int lwork = static_cast< int > ( rwork1 );
         real64 * rwork = new real64[lwork];
         lapack.GELSS(systemSize,4,1,A.values(),A.stride(),pTarget.values(),pTarget.stride(),svd,-1,&rank,rwork,lwork,&info);
+        /*
         std::cout << "==Solution==" << std::endl;
         pTarget.print(std::cout);
+        */
 
         // Computation of coarse-grid flow parameters
         real64 coarseAveragePressure1 = 0.;
@@ -295,20 +314,20 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
         aggregateElement->forFineCellsInAggregate( aggregateNumber1,
                                                    [&] ( localIndex fineCellIndex )
         {
-          coarseAveragePressure1 +=  pTarget[0] * pressure1[cell1.region][cell1.subRegion][fineCellIndex]
+          coarseAveragePressure1 += ( pTarget[0] * pressure1[cell1.region][cell1.subRegion][fineCellIndex]
                                    + pTarget[1] * pressure2[cell1.region][cell1.subRegion][fineCellIndex]
                                    + pTarget[2] * pressure3[cell1.region][cell1.subRegion][fineCellIndex]
-                                   + pTarget[3];
-          coarseAveragePressure1 *= elemRegion->GetSubRegion(cell1.subRegion)->getElementVolume()[fineCellIndex];
+                                   + pTarget[3] )* elemRegion->GetSubRegion(cell1.subRegion)->getElementVolume()[fineCellIndex];
           /*
           std::cout <<"=========================================" << std::endl;
-          std::cout << pTarget[0] << " " << pTarget[1] << " "<< pTarget[2] 
+          std::cout <<  "p target : "<<pTarget[0] << " " << pTarget[1] << " "<< pTarget[2] << " " << pTarget[3]
  << std::endl;
- std::cout<<  pressure1[cell1.region][cell1.subRegion][fineCellIndex] << " " 
+ std::cout<<  "fine pressure : " <<pressure1[cell1.region][cell1.subRegion][fineCellIndex] << " " 
           << pressure2[cell1.region][cell1.subRegion][fineCellIndex] << " "
           << pressure3[cell1.region][cell1.subRegion][fineCellIndex] << std::endl;
-          std::cout << elemRegion->GetSubRegion(cell1.subRegion)->getElementVolume()[fineCellIndex] << std::endl;
-          std::cout << barycenter1 << "  " << barycenter2 << std::endl;
+          std::cout << "fine volume : "<< elemRegion->GetSubRegion(cell1.subRegion)->getElementVolume()[fineCellIndex] << std::endl;
+          std::cout << "to be summed: " << pTarget[0] * pressure1[cell1.region][cell1.subRegion][fineCellIndex] + pTarget[1] * pressure2[cell1.region][cell1.subRegion][fineCellIndex] + pTarget[2] * pressure3[cell1.region][cell1.subRegion][fineCellIndex] + pTarget[3] << std::endl;
+          std::cout << "cur Coarse pressure " << coarseAveragePressure1 << std::endl;
           */
 
 
@@ -316,15 +335,22 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
         aggregateElement->forFineCellsInAggregate( aggregateNumber2,
                                                    [&] ( localIndex fineCellIndex )
         {
-          coarseAveragePressure2 +=  pTarget[0] * pressure1[cell2.region][cell2.subRegion][fineCellIndex]
+          coarseAveragePressure2 += (pTarget[0] * pressure1[cell2.region][cell2.subRegion][fineCellIndex]
                                    + pTarget[1] * pressure2[cell2.region][cell2.subRegion][fineCellIndex]
                                    + pTarget[2] * pressure3[cell2.region][cell2.subRegion][fineCellIndex]
-                                   + pTarget[3];
-          coarseAveragePressure2 *= elemRegion->GetSubRegion(cell2.subRegion)->getElementVolume()[fineCellIndex];
+                                   + pTarget[3] )* elemRegion->GetSubRegion(cell2.subRegion)->getElementVolume()[fineCellIndex];
         });
 
+        /*
+        std::cout << "coarse average pressure1 " << coarseAveragePressure1 << std::endl;
+        std::cout << "coarse average pressure2 " << coarseAveragePressure2 << std::endl;
+        */
         coarseAveragePressure1 /= aggregateElement->getElementVolume()[aggregateNumber1];
         coarseAveragePressure2 /= aggregateElement->getElementVolume()[aggregateNumber2];
+        /*
+        std::cout << "coarse average pressure1 " << coarseAveragePressure1 << std::endl;
+        std::cout << "coarse average pressure2 " << coarseAveragePressure2 << std::endl;
+        */
 
         fineStencil.forAll( [&] ( StencilCollection<CellDescriptor, real64>::Accessor stencilBis )
         {
@@ -357,8 +383,8 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
         for( localIndex i = 0; i < 2; i++ )
         {
           stencilWeights[i] = std::fabs(coarseFlowRate[i] / ( coarseAveragePressure1 - coarseAveragePressure2 )) * std::pow(-1,i) ; // TODO sign ?
-          //std::cout << coarseAveragePressure1 << " " << coarseAveragePressure2 << std::endl;
-//          stencilWeights[i] = 1e-14* std::pow(-1,i) ; // TODO sign ?
+        //  stencilWeights[i] = 1e-13* std::pow(-1,i) ; // TODO sign ?
+          //std::cout << "trans : " <<  stencilWeights[i] << std::endl;
         }
         coarseStencil.add(stencilCells.data(), stencilCells, stencilWeights, 0.);
         interfaces.insert(std::make_pair(aggregateNumber1, aggregateNumber2));

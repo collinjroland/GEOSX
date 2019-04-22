@@ -67,7 +67,6 @@ void CopyField::Execute( real64 const time_n,
     curRegion->forElementSubRegions([&]( auto * const elementSubRegion) -> void
     {
       dataRepository::ViewWrapperBase * vwFrom = elementSubRegion->getWrapperBase( m_from );
-      dataRepository::ViewWrapperBase * vwFrom2 = elementSubRegion->getWrapperBase( CellElementSubRegion::viewKeyStruct::elementCenterString );
       GEOS_ERROR_IF( vwFrom == nullptr, "Field " + m_from + " not found on " + elementSubRegion->getName() );
       std::type_index typeIndex = std::type_index( vwFrom->get_typeid());
       rtTypes::ApplyArrayTypeLambda1( rtTypes::typeID( typeIndex ),
@@ -76,11 +75,10 @@ void CopyField::Execute( real64 const time_n,
         using fieldType = decltype(type);
         dataRepository::ViewWrapper<fieldType> *  to = elementSubRegion->template RegisterViewWrapper< fieldType >(m_to);
         dataRepository::ViewWrapper<fieldType> & from = dynamic_cast< dataRepository::ViewWrapper<fieldType> & >(*vwFrom);
-        dataRepository::ViewWrapper<R1Tensor> & from2 = dynamic_cast< dataRepository::ViewWrapper<R1Tensor> & >(*vwFrom2);
         fieldType & fromField = from.reference();
         fieldType & toField = to->reference();
         toField = fromField;
-        std::cout << "center : " << from2[6] << " , " << fromField[6] << std::endl;
+        std::cout << "tofield : "<< toField[6690] << std::endl;
       });
     });
   }
