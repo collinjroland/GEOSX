@@ -78,7 +78,7 @@ void CopyField::Execute( real64 const time_n,
         fieldType & fromField = from.reference();
         fieldType & toField = to->reference();
         toField = fromField;
-        std::cout << "tofield : "<< toField[6690] << std::endl;
+//        std::cout << "tofield : "<< toField[6690] << std::endl;
       });
     });
   }

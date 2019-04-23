@@ -72,7 +72,8 @@ void AggregateStencil::Execute( real64 const time_n,
   TwoPointFluxApproximation * coarseFluxApprox = fvManager->CreateChild("TwoPointFluxApproximation", "coarseSinglePhaseTPFA")->group_cast<TwoPointFluxApproximation*>(); // TODO hardcoded.
 
   // Compute the coarse stencil
-  coarseFluxApprox->computeCoarsetencil(domain->group_cast<DomainPartition*>(), fineFluxApprox->getStencil(),coarseFluxApprox->getStencil(),"pressure1","pressure2","pressure3"); // TODO hardcoded.
+  //GEOS_ERROR_IF(true,"hein??");
+  coarseFluxApprox->computeBestCoarsetencil(domain->group_cast<DomainPartition*>(), fineFluxApprox->getStencil(),coarseFluxApprox->getStencil(),"pressure1","pressure2","pressure3"); // TODO hardcoded.
 
   // Upscale porosity and initial Pressure
   MeshLevel * const mesh = domain->group_cast< DomainPartition* >()->getMeshBody( 0 )->getMeshLevel( 0 );
@@ -85,9 +86,10 @@ void AggregateStencil::Execute( real64 const time_n,
   {
     for( localIndex aggregateIndex = 0; aggregateIndex < aggregateRegion->size() ; aggregateIndex++ )
     {
-        aggregateRegion->forFineCellsInAggregate( aggregateIndex,
-                                                  [&] ( localIndex fineCellIndex )
+        aggregateRegion->forGlobalFineCellsInAggregate( aggregateIndex,
+                                                  [&] ( globalIndex fineCellIndexGlobal )
         {
+          localIndex fineCellIndex = elemManager->GetRegion(0)->GetSubRegion(0)->m_globalToLocalMap.at(fineCellIndexGlobal);
           porosity[0][1][aggregateIndex] += porosity[0][0][fineCellIndex] * elementSubRegionVolumes[fineCellIndex];
         });
         porosity[0][1][aggregateIndex] /= aggregateVolumes[aggregateIndex];

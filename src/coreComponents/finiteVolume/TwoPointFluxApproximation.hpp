@@ -46,6 +46,13 @@ public:
                             std::string const & elementaryPressure2Name,
                             std::string const & elementaryPressure3Name );
 
+  void computeBestCoarsetencil( DomainPartition * domain,
+                            CellStencil const & fineStencil,
+                            CellStencil & coarseStencil,
+                            std::string const & elementaryPressure1Name,
+                            std::string const & elementaryPressure2Name,
+                            std::string const & elementaryPressure3Name );
+
 protected:
 
   virtual void computeCellStencil( DomainPartition const & domain,

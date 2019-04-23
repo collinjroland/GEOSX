@@ -29,7 +29,7 @@ AggregateElementSubRegion::AggregateElementSubRegion( string const & name,
 {
   RegisterViewWrapper(viewKeyStruct::elementCenterString, &m_elementCenter, 0 );
   RegisterViewWrapper(viewKeyStruct::elementVolumeString, &m_elementVolume, 0 );
-  RegisterViewWrapper(viewKeyStruct::fineByAggregates, &m_fineByAggregates, 0 );
+  RegisterViewWrapper(viewKeyStruct::fineByAggregates, &m_globalFineByAggregates, 0 );
 }
 
 AggregateElementSubRegion::~AggregateElementSubRegion()
@@ -48,12 +48,6 @@ void AggregateElementSubRegion::CreateFromFineToCoarseMap( localIndex nbAggregat
   m_fineCellVolumes.resize( fineToCoarse.size() );
   
   /// Third loop to order the index of the fine cells
-  array1d< localIndex > offset( nbAggregates );
-  for( localIndex fineCell = 0; fineCell < fineToCoarse.size(); fineCell++ )
-  {
-    localIndex coarseCell = fineToCoarse[fineCell];
-    m_fineByAggregates[coarseCell].push_back(fineCell);
-  }
 
   int mpiSize;
   int mpiRank;
@@ -83,6 +77,12 @@ void AggregateElementSubRegion::CreateFromFineToCoarseMap( localIndex nbAggregat
         aggregateIndexSave[i] = m_localToGlobalMap[fineToCoarse[i]];
       }
   });
+  for( localIndex fineCell = 0; fineCell < fineToCoarse.size(); fineCell++ )
+  {
+    localIndex coarseCell = fineToCoarse[fineCell];
+    globalIndex globalFine = elementRegion->GetSubRegion(0)->m_localToGlobalMap[fineCell];
+    m_globalFineByAggregates[coarseCell].push_back(globalFine);
+  }
 
 }
 }

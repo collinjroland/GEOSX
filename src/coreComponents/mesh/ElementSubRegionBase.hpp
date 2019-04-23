@@ -49,6 +49,7 @@ public:
     static constexpr auto faceListString               = "faceList";
     static constexpr auto elementCenterString          = "elementCenter";
     static constexpr auto elementVolumeString          = "elementVolume";
+    static constexpr auto halfTransmissibilitiesString = "halfTransmissibilities";
   };
 
   struct groupKeyStruct : public ObjectManagerBase::groupKeyStruct
@@ -135,6 +136,8 @@ protected:
   array1d< real64 > m_elementVolume;
 
   string m_elementTypeString;
+
+  array1d< map< globalIndex, real64 > > m_halfTransmissibilities;
 
   FiniteElementBase::ElementType m_elementType;
 //  template< LAMBDA lambda >

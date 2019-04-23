@@ -21,6 +21,7 @@ ElementSubRegionBase::ElementSubRegionBase( string const & name, ManagedGroup * 
   m_elementVolume()
 {
   RegisterGroup( groupKeyStruct::constitutiveModelsString, &m_constitutiveModels, 0 );
+  RegisterViewWrapper(viewKeyStruct::halfTransmissibilitiesString, &m_halfTransmissibilities, 0 );
 }
 
 ElementSubRegionBase::~ElementSubRegionBase()

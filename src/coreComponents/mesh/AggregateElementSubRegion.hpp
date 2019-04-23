@@ -43,12 +43,13 @@ public:
   struct viewKeyStruct : public ElementSubRegionBase::viewKeyStruct
   {
     static constexpr auto fineByAggregates = "fineByAggregates";
+    static constexpr auto halfTransmissibilitiesString = "halfTransmissibilities";
   };
 
   template< typename LAMBDA >
-  void forFineCellsInAggregate( localIndex aggregateIndex, LAMBDA lambda )
+  void forGlobalFineCellsInAggregate( localIndex aggregateIndex, LAMBDA lambda )
   {
-    for(localIndex fineCell :  m_fineByAggregates[aggregateIndex])
+    for(globalIndex fineCell :  m_globalFineByAggregates[aggregateIndex])
     {
       lambda(fineCell);
     }
@@ -56,7 +57,7 @@ public:
 
   localIndex GetNbCellsPerAggregate( localIndex aggregateIndex ) const
   {
-    return m_fineByAggregates[aggregateIndex].size();
+    return m_globalFineByAggregates[aggregateIndex].size();
   }
 
   AggregateElementSubRegion( string const & name,
@@ -142,7 +143,7 @@ private:
   /// Relation between fine and coarse elements ordered by aggregates
   //array1d< localIndex > m_fineToCoarse;
 
-  array1d< array1d < localIndex > > m_fineByAggregates;
+  array1d< array1d < localIndex > > m_globalFineByAggregates;
 
   array1d< R1Tensor > m_fineCellCenters;
 

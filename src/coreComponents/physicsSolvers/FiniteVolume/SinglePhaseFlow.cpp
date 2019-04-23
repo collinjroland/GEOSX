@@ -1341,7 +1341,7 @@ void SinglePhaseFlow::SolveSystem( EpetraBlockSystem * const blockSystem,
   }
   if(!m_aggregateMode)
   {
-  std::cout << "after solve 1 :  " << m_pressure[0][0][6690] << std::endl;
+  //std::cout << "after solve 1 :  " << m_pressure[0][0][6690] << std::endl;
   }
 }
 
