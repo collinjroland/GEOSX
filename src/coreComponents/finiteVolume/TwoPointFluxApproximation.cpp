@@ -30,6 +30,7 @@
 #include "Teuchos_LAPACK.hpp"
 #include "MPI_Communications/NeighborCommunicator.hpp"
 #include "MPI_Communications/CommunicationTools.hpp"
+#include <unordered_set>
 
 namespace geosx
 {
@@ -410,6 +411,152 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
                                                      std::string const & elementaryPressure2Name,
                                                      std::string const & elementaryPressure3Name )
 {
+  MeshBody * const meshBody = domain->getMeshBody(0);
+  MeshLevel * const mesh = meshBody->getMeshLevel(0);
+  NodeManager * const nodeManager = mesh->getNodeManager();
+  FaceManager * const faceManager = mesh->getFaceManager();
+  ElementRegionManager * const elemManager = mesh->getElemManager();
+  AggregateElementSubRegion *  aggregateElement = elemManager->GetRegion(0)->GetSubRegion("coarse")->group_cast< AggregateElementSubRegion * >(); // harcoded
+  auto aggregateGlobalIndexes = elemManager->ConstructViewAccessor<array1d<globalIndex>, arrayView1d<globalIndex>>( CellElementSubRegion::viewKeyStruct::aggregateIndexString );
+
+  arrayView2d<localIndex const> const & elemRegionList     = faceManager->elementRegionList();
+  arrayView2d<localIndex const> const & elemSubRegionList  = faceManager->elementSubRegionList();
+  arrayView2d<localIndex const> const & elemList           = faceManager->elementList();
+  arrayView1d<R1Tensor const>   const & X = nodeManager->referencePosition();
+
+  ElementRegionManager::ElementViewAccessor<arrayView1d<R1Tensor>> const elemCenter =
+    elemManager->ConstructViewAccessor< array1d<R1Tensor>, arrayView1d<R1Tensor> >(
+                                        CellBlock::viewKeyStruct::elementCenterString);
+
+  ElementRegionManager::ElementViewAccessor<arrayView1d<R1Tensor>> const coefficient =
+    elemManager->ConstructViewAccessor< array1d<R1Tensor>, arrayView1d<R1Tensor> >( m_coeffName );
+
+  arrayView1d<integer const> const & faceGhostRank =
+    faceManager->getReference<array1d<integer>>( ObjectManagerBase::viewKeyStruct::ghostRankString );
+
+  array1d<array1d<localIndex>> const & faceToNodes = faceManager->nodeList();
+
+  // make a list of region indices to be included
+  set<localIndex> regionFilter;
+  for (string const & regionName : m_targetRegions)
+  {
+    regionFilter.insert( elemManager->GetRegions().getIndex( regionName ) );
+  }
+
+  constexpr localIndex numElems = 2;
+
+  R1Tensor faceCenter, faceNormal, faceConormal, cellToFaceVec;
+  R2SymTensor coefTensor;
+  real64 faceArea, faceWeight, faceWeightInv;
+
+  array1d<CellDescriptor> stencilCells(numElems);
+  array1d<real64> stencilWeights(numElems);
+
+  // loop over faces and calculate faceArea, faceNormal and faceCenter
+  real64 const areaTolerance = pow( meshBody->getGlobalLengthScale() * this->m_areaRelTol, 2 );
+
+  struct Aggregate
+  {
+    localIndex aggregateLocalIndex;
+    globalIndex  aggregateGlobalIndex;
+    localIndex ghostRank;
+    array1d< localIndex > fineCellsOnInterface;
+    bool  operator==( const Aggregate & rhs) const
+    {
+      return aggregateGlobalIndex == rhs.aggregateGlobalIndex;
+    }
+  };
+
+  struct AggregateCouple
+  {
+    Aggregate aggregate0;
+    Aggregate aggregate1;
+    array1d< localIndex > faceIndicies;
+
+    bool operator==( const AggregateCouple & rhs) const
+    {
+      return aggregate0 == rhs.aggregate0 && aggregate1 == rhs.aggregate1;
+    }
+    
+  };
+
+  std::vector< AggregateCouple > adjacentAggregates;
+  adjacentAggregates.reserve(faceManager->size());
+
+  for (localIndex kf = 0; kf < faceManager->size(); ++kf)
+  {
+    if ( elemRegionList[kf][0] == -1 || elemRegionList[kf][1] == -1)
+      continue;
+
+    if (!regionFilter.empty() && !(regionFilter.contains(elemRegionList[kf][0]) && regionFilter.contains(elemRegionList[kf][1])))
+      continue;
+
+    faceArea = computationalGeometry::Centroid_3DPolygon( faceToNodes[kf], X, faceCenter, faceNormal, areaTolerance );
+
+    if( faceArea < areaTolerance )
+      continue;
+      
+    GEOS_ERROR_IF(elemRegionList[kf][0] == -1 || elemRegionList[kf][1] == -1, "Should be never reach");
+    localIndex const er0  = elemRegionList[kf][0];
+    localIndex const esr0 = elemSubRegionList[kf][0];
+    localIndex const ei0  = elemList[kf][0];
+
+    localIndex const er1  = elemRegionList[kf][1];
+    localIndex const esr1 = elemSubRegionList[kf][1];
+    localIndex const ei1  = elemList[kf][1];
+
+    Aggregate aggregate0;
+    Aggregate aggregate1;
+
+    if (ei0 == -1 || ei1 == -1)
+    {
+      GEOS_LOG_RANK( faceGhostRank[kf] << " " << er0 << " " << esr0 << " " << ei0);
+      GEOS_LOG_RANK( faceGhostRank[kf] << " " << er1 << " " << esr1 << " " << ei1);
+    }
+    /*
+    aggregate0.aggregateGlobalIndex = aggregateGlobalIndexes[er0][esr0][ei0];
+    aggregate1.aggregateGlobalIndex = aggregateGlobalIndexes[er1][esr1][ei1];
+
+    AggregateCouple coupleToFind;
+    coupleToFind.aggregate0 = aggregate0;
+    coupleToFind.aggregate1 = aggregate1;
+
+    AggregateCouple * couple = nullptr;
+    auto aggCoupleIterator = std::find( adjacentAggregates.begin(),
+                                        adjacentAggregates.end(),
+                                        coupleToFind);
+    
+    if( aggCoupleIterator == adjacentAggregates.end() )
+    {
+      // Couple was not added in the vector
+      adjacentAggregates.push_back( coupleToFind );
+      couple = &adjacentAggregates.back();
+    }
+    else
+    {
+      // Couple already exist in the vector
+      couple = &(*aggCoupleIterator);
+    }
+
+
+    // Complete the couple
+    couple->aggregate0.fineCellsOnInterface.push_back(ei0);
+    couple->aggregate1.fineCellsOnInterface.push_back(ei1);
+
+    couple->aggregate0.ghostRank = elemManager->GetRegion(er0)
+                                              ->GetSubRegion(esr0)
+                                              ->GhostRank()[ei0];
+    couple->aggregate1.ghostRank = elemManager->GetRegion(er1)
+                                              ->GetSubRegion(esr1)
+                                              ->GhostRank()[ei1];
+
+    couple->aggregate0.aggregateLocalIndex = aggregateElement->m_globalToLocalMap.at(aggregateGlobalIndexes[er0][esr0][ei0]);
+    couple->aggregate1.aggregateLocalIndex = aggregateElement->m_globalToLocalMap.at(aggregateGlobalIndexes[er1][esr1][ei1]);
+
+    */
+  }
+  GEOS_ERROR_IF(true,"end");
+  /*
   MeshLevel * const mesh = domain->getMeshBodies()->GetGroup<MeshBody>(0)->getMeshLevel(0);
   ElementRegionManager * const elemManager = mesh->getElemManager();
   ElementRegion * const elemRegion = elemManager->GetRegion(0); // TODO : still one region / elemsubregion
@@ -433,7 +580,6 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
   array1d<real64> stencilWeights(2);
 
   std::set< std::pair< localIndex, localIndex > > interfaces;
-  /*
   fineStencil.forAll( [&] ( StencilCollection<CellDescriptor, real64>::Accessor stencil ) //TODO maye find a clever way to iterate between coarse interfaces ?
   {
     localIndex const stencilSize = stencil.size();
@@ -467,7 +613,6 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
   }
 
   GEOS_ERROR_IF(true,"debuuuuuuuuuuuug");
-  */
   fineStencil.forAll( [&] ( StencilCollection<CellDescriptor, real64>::Accessor stencil ) //TODO maye find a clever way to iterate between coarse interfaces ?
   {
     localIndex const stencilSize = stencil.size();
@@ -487,13 +632,11 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
         // Now we compute the transmissibilities
         R1Tensor barycenter1 = aggregateElement->getElementCenter()[aggregateNumber1];
         R1Tensor barycenter2 = aggregateElement->getElementCenter()[aggregateNumber2];
-        /*
         std::cout << "======================================"<< std::endl;
         std::cout << "aggregateNumber1 : " << aggregateNumber1 << std::endl;
         std::cout << "aggregateNumber2 : " << aggregateNumber2 << std::endl;
         std::cout << "barycenter1 : " << barycenter1 << std::endl;
         std::cout << "barycenter2 : " << barycenter2 << std::endl;
-        */
         barycenter1 -= barycenter2; // normal between the two aggregates
         barycenter1.Normalize();
         //std::cout << "vector between the two aggregates : " << barycenter1 << std::endl;
@@ -512,7 +655,6 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
         ElementRegionManager::ElementViewAccessor<arrayView1d<real64>> pressure3 =
           elemManager->ConstructViewAccessor<array1d<real64>, arrayView1d<real64>>( elementaryPressure3Name );
         int count =0;
-        /*
         std::cout << "@@@@@@@@@@@@@@@" << std::endl;
         std::cout << pressure3[0].size() << std::endl;
         for(int i = 0; i < pressure3[0][0].size(); i++)
@@ -520,7 +662,6 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
           std::cout << pressure3[0][0][i] <<std::endl;
         }
         std::cout << "@@@@@@@@@@@@@@@" << std::endl;
-        */
         aggregateElement->forGlobalFineCellsInAggregate( aggregateNumber1,
                                                    [&] ( globalIndex fineCellIndexGlobal )
         {
@@ -529,11 +670,9 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
           A(count,1) = pressure2[cell1.region][cell1.subRegion][fineCellIndex];
           A(count,2) = pressure3[cell1.region][cell1.subRegion][fineCellIndex];
           A(count,3) = 1.;
-          /*
  std::cout<< "fine cell index : " << fineCellIndex << " "  <<pressure1[cell1.region][cell1.subRegion][fineCellIndex] << " " 
           << pressure2[cell1.region][cell1.subRegion][fineCellIndex] << " "
           << pressure3[cell1.region][cell1.subRegion][fineCellIndex] << std::endl;
-          */
           GEOS_ERROR_IF(fineCellIndex >= elemRegion->GetSubRegion(cell1.subRegion)->size(),"error");
           R1Tensor barycenterFineCell = elemRegion->GetSubRegion(cell1.subRegion)->getElementCenter()[fineCellIndex];
           //std::cout << "fine cell center : " <<  barycenterFineCell << std::endl;
@@ -549,11 +688,9 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
           A(count,1) = pressure2[cell2.region][cell2.subRegion][fineCellIndex];
           A(count,2) = pressure3[cell2.region][cell2.subRegion][fineCellIndex];
           A(count,3) = 1.;
-          /*
  std::cout<< "fine cell index : " << fineCellIndex << " "  <<pressure1[cell2.region][cell2.subRegion][fineCellIndex] << " " 
           << pressure2[cell2.region][cell2.subRegion][fineCellIndex] << " "
           << pressure3[cell2.region][cell2.subRegion][fineCellIndex] << std::endl;
-          */
           R1Tensor barycenterFineCell = elemRegion->GetSubRegion(cell2.subRegion)->getElementCenter()[fineCellIndex];
           //std::cout << "fine cell center : " <<  barycenterFineCell << std::endl;
           pTarget(count++) = barycenterFineCell[0]*barycenter1[0]
@@ -565,22 +702,18 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
         real64  rwork1;
         real64 svd[4];
         int rank;
-        /*
         std::cout << "==A==" << std::endl;
         A.print(std::cout);
         std::cout << "==b==" << std::endl;
         pTarget.print(std::cout);
-        */
 
         // Solve the least square system
         lapack.GELSS(systemSize,4,1,A.values(),A.stride(),pTarget.values(),pTarget.stride(),svd,-1,&rank,&rwork1,-1,&info);
         int lwork = static_cast< int > ( rwork1 );
         real64 * rwork = new real64[lwork];
         lapack.GELSS(systemSize,4,1,A.values(),A.stride(),pTarget.values(),pTarget.stride(),svd,-1,&rank,rwork,lwork,&info);
-        /*
         std::cout << "==Solution==" << std::endl;
         pTarget.print(std::cout);
-        */
 
         // Computation of coarse-grid flow parameters
         real64 coarseAveragePressure1 = 0.;
@@ -595,7 +728,6 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
                                    + pTarget[1] * pressure2[cell1.region][cell1.subRegion][fineCellIndex]
                                    + pTarget[2] * pressure3[cell1.region][cell1.subRegion][fineCellIndex]
                                    + pTarget[3] )* elemRegion->GetSubRegion(cell1.subRegion)->getElementVolume()[fineCellIndex];
-          /*
           std::cout <<"=========================================" << std::endl;
           std::cout <<  "p target : "<<pTarget[0] << " " << pTarget[1] << " "<< pTarget[2] << " " << pTarget[3]
  << std::endl;
@@ -605,7 +737,6 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
           std::cout << "fine volume : "<< elemRegion->GetSubRegion(cell1.subRegion)->getElementVolume()[fineCellIndex] << std::endl;
           std::cout << "to be summed: " << pTarget[0] * pressure1[cell1.region][cell1.subRegion][fineCellIndex] + pTarget[1] * pressure2[cell1.region][cell1.subRegion][fineCellIndex] + pTarget[2] * pressure3[cell1.region][cell1.subRegion][fineCellIndex] + pTarget[3] << std::endl;
           std::cout << "cur Coarse pressure " << coarseAveragePressure1 << std::endl;
-          */
 
 
         });
@@ -619,16 +750,12 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
                                    + pTarget[3] )* elemRegion->GetSubRegion(cell2.subRegion)->getElementVolume()[fineCellIndex];
         });
 
-        /*
         std::cout << "coarse average pressure1 " << coarseAveragePressure1 << std::endl;
         std::cout << "coarse average pressure2 " << coarseAveragePressure2 << std::endl;
-        */
         coarseAveragePressure1 /= aggregateElement->getElementVolume()[aggregateNumber1];
         coarseAveragePressure2 /= aggregateElement->getElementVolume()[aggregateNumber2];
-        /*
         std::cout << "coarse average pressure1 " << coarseAveragePressure1 << std::endl;
         std::cout << "coarse average pressure2 " << coarseAveragePressure2 << std::endl;
-        */
 
         fineStencil.forAll( [&] ( StencilCollection<CellDescriptor, real64>::Accessor stencilBis )
         {
@@ -677,13 +804,11 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
         // Now we compute the transmissibilities
         R1Tensor barycenter1 = aggregateElement->getElementCenter()[aggregateNumber1];
         R1Tensor barycenter2 = aggregateElement->getElementCenter()[aggregateNumber2];
-        /*
         std::cout << "======================================"<< std::endl;
         std::cout << "aggregateNumber1 : " << aggregateNumber1 << std::endl;
         std::cout << "aggregateNumber2 : " << aggregateNumber2 << std::endl;
         std::cout << "barycenter1 : " << barycenter1 << std::endl;
         std::cout << "barycenter2 : " << barycenter2 << std::endl;
-        */
         barycenter1 -= barycenter2; // normal between the two aggregates
         barycenter1.Normalize();
         //std::cout << "vector between the two aggregates : " << barycenter1 << std::endl;
@@ -702,7 +827,6 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
         ElementRegionManager::ElementViewAccessor<arrayView1d<real64>> pressure3 =
           elemManager->ConstructViewAccessor<array1d<real64>, arrayView1d<real64>>( elementaryPressure3Name );
         int count =0;
-        /*
         std::cout << "@@@@@@@@@@@@@@@" << std::endl;
         std::cout << pressure3[0].size() << std::endl;
         for(int i = 0; i < pressure3[0][0].size(); i++)
@@ -710,7 +834,6 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
           std::cout << pressure3[0][0][i] <<std::endl;
         }
         std::cout << "@@@@@@@@@@@@@@@" << std::endl;
-        */
         aggregateElement->forGlobalFineCellsInAggregate( aggregateNumber1,
                                                    [&] ( globalIndex fineCellIndexGlobal )
         {
@@ -719,11 +842,9 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
           A(count,1) = pressure2[cell1.region][cell1.subRegion][fineCellIndex];
           A(count,2) = pressure3[cell1.region][cell1.subRegion][fineCellIndex];
           A(count,3) = 1.;
-          /*
  std::cout<< "fine cell index : " << fineCellIndex << " "  <<pressure1[cell1.region][cell1.subRegion][fineCellIndex] << " " 
           << pressure2[cell1.region][cell1.subRegion][fineCellIndex] << " "
           << pressure3[cell1.region][cell1.subRegion][fineCellIndex] << std::endl;
-          */
           GEOS_ERROR_IF(fineCellIndex >= elemRegion->GetSubRegion(cell1.subRegion)->size(),"error");
           R1Tensor barycenterFineCell = elemRegion->GetSubRegion(cell1.subRegion)->getElementCenter()[fineCellIndex];
           //std::cout << "fine cell center : " <<  barycenterFineCell << std::endl;
@@ -750,11 +871,9 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
           A(count,1) = pressure2[cell2.region][cell2.subRegion][fineCellIndex];
           A(count,2) = pressure3[cell2.region][cell2.subRegion][fineCellIndex];
           A(count,3) = 1.;
-          /*
  std::cout<< "fine cell index : " << fineCellIndex << " "  <<pressure1[cell2.region][cell2.subRegion][fineCellIndex] << " " 
           << pressure2[cell2.region][cell2.subRegion][fineCellIndex] << " "
           << pressure3[cell2.region][cell2.subRegion][fineCellIndex] << std::endl;
-          */
           R1Tensor barycenterFineCell = elemRegion->GetSubRegion(cell2.subRegion)->getElementCenter()[fineCellIndex];
           //std::cout << "fine cell center : " <<  barycenterFineCell << std::endl;
           pTarget(count++) = barycenterFineCell[0]*barycenter1[0]
@@ -766,22 +885,18 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
         real64  rwork1;
         real64 svd[4];
         int rank;
-        /*
         std::cout << "==A==" << std::endl;
         A.print(std::cout);
         std::cout << "==b==" << std::endl;
         pTarget.print(std::cout);
-        */
 
         // Solve the least square system
         lapack.GELSS(systemSize,4,1,A.values(),A.stride(),pTarget.values(),pTarget.stride(),svd,-1,&rank,&rwork1,-1,&info);
         int lwork = static_cast< int > ( rwork1 );
         real64 * rwork = new real64[lwork];
         lapack.GELSS(systemSize,4,1,A.values(),A.stride(),pTarget.values(),pTarget.stride(),svd,-1,&rank,rwork,lwork,&info);
-        /*
         std::cout << "==Solution==" << std::endl;
         pTarget.print(std::cout);
-        */
 
         // Computation of coarse-grid flow parameters
         real64 coarseAveragePressure1 = 0.;
@@ -796,7 +911,6 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
                                    + pTarget[1] * pressure2[cell1.region][cell1.subRegion][fineCellIndex]
                                    + pTarget[2] * pressure3[cell1.region][cell1.subRegion][fineCellIndex]
                                    + pTarget[3] )* elemRegion->GetSubRegion(cell1.subRegion)->getElementVolume()[fineCellIndex];
-          /*
           std::cout <<"=========================================" << std::endl;
           std::cout <<  "p target : "<<pTarget[0] << " " << pTarget[1] << " "<< pTarget[2] << " " << pTarget[3]
  << std::endl;
@@ -806,7 +920,6 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
           std::cout << "fine volume : "<< elemRegion->GetSubRegion(cell1.subRegion)->getElementVolume()[fineCellIndex] << std::endl;
           std::cout << "to be summed: " << pTarget[0] * pressure1[cell1.region][cell1.subRegion][fineCellIndex] + pTarget[1] * pressure2[cell1.region][cell1.subRegion][fineCellIndex] + pTarget[2] * pressure3[cell1.region][cell1.subRegion][fineCellIndex] + pTarget[3] << std::endl;
           std::cout << "cur Coarse pressure " << coarseAveragePressure1 << std::endl;
-          */
 
 
         });
@@ -820,16 +933,12 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
                                    + pTarget[3] )* elemRegion->GetSubRegion(cell2.subRegion)->getElementVolume()[fineCellIndex];
         });
 
-        /*
         std::cout << "coarse average pressure1 " << coarseAveragePressure1 << std::endl;
         std::cout << "coarse average pressure2 " << coarseAveragePressure2 << std::endl;
-        */
         coarseAveragePressure1 /= aggregateElement->getElementVolume()[aggregateNumber1];
         coarseAveragePressure2 /= aggregateElement->getElementVolume()[aggregateNumber2];
-        /*
         std::cout << "coarse average pressure1 " << coarseAveragePressure1 << std::endl;
         std::cout << "coarse average pressure2 " << coarseAveragePressure2 << std::endl;
-        */
 
         fineStencil.forAll( [&] ( StencilCollection<CellDescriptor, real64>::Accessor stencilBis )
         {
@@ -881,6 +990,7 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
       }
     }
 });
+*/
 
 //GEOS_ERROR_IF(true,"error");
 }
