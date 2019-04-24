@@ -182,6 +182,8 @@ public:
               string const & fieldName,
               LAMBDA && lambda ) const
   {
+  FieldSpecificationBase const * fsBase = nullptr;
+  set<localIndex> const * targetSetCopy = nullptr;
     GEOSX_MARK_FUNCTION;
     for( auto & subGroup : this->GetSubGroups() )
     {
@@ -237,6 +239,8 @@ public:
                       MeshManager * meshManager,
                       LAMBDA && lambda ) const
   {
+  FieldSpecificationBase const * fsBase = nullptr;
+  set<localIndex> const * targetSetCopy = nullptr;
     GEOSX_MARK_FUNCTION;
     for( auto & subGroup : this->GetSubGroups() )
     {

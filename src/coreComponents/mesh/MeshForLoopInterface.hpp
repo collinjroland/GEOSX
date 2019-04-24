@@ -102,7 +102,7 @@ void forAllElemsInMesh( MeshLevel const * const mesh, LAMBDA && lambdaBody)
   for( localIndex er=0 ; er<elemManager->numRegions() ; ++er )
   {
     ElementRegion const * const elemRegion = elemManager->GetRegion(er);
-    for( localIndex esr=0 ; esr<elemRegion->numSubRegions() ; ++esr )
+    for( localIndex esr=1 ; esr<elemRegion->numSubRegions() ; ++esr )// TODO !!!!
     {
       ElementSubRegionBase const * const elementSubRegion = elemRegion->GetSubRegion(esr);
 

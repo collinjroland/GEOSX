@@ -681,6 +681,8 @@ void FieldSpecificationBase::ApplyFieldValue( set<localIndex> const & targetSet,
                                               string const & fieldName,
                                               real64_array const & fieldArray) const
 {
+  FieldSpecificationBase const * fsBase = nullptr;
+  set<localIndex> const * targetSetCopy = nullptr;
   integer const component = GetComponent();
   string const & functionName = getReference<string>( viewKeyStruct::functionNameString );
   string const & readFrom = getReference<string>( viewKeyStruct::readFromString );
@@ -709,7 +711,6 @@ void FieldSpecificationBase::ApplyFieldValue( set<localIndex> const & targetSet,
                                                            ManagedGroup * dataGroup,
                                                            string const & fieldName ) const
 {
-
   integer const component = GetComponent();
   string const & functionName = getReference<string>( viewKeyStruct::functionNameString );
   string const & readFrom = getReference<string>( viewKeyStruct::readFromString );

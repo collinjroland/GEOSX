@@ -88,6 +88,12 @@ public:
    */
   virtual ~CompositionalMultiphaseFlow() override = default;
 
+  void updateRelPerm()
+  {
+    m_relPermName += "1";
+    m_relPermIndex +=1;
+  }
+
   /**
    * @brief name of the node manager in the object catalog
    * @return string that contains the catalog name to generate a new NodeManager object through the object catalog.
@@ -347,6 +353,18 @@ public:
   {
   } groupKeysCompMultiphaseFlow;
 
+  void InitializeAfterAggreg(ManagedGroup *rootGroup) ;
+
+
+  /**
+   * @brief Initialize all variables from initial conditions
+   * @param domain the domain containing the mesh and fields
+   *
+   * Initialize all variables from initial conditions. This calculating primary variable values
+   * from prescribed intermediate values (i.e. global densities from global fractions)
+   * and any applicable hydrostatic equilibration of the domain
+   */
+  void InitializeFluidState( DomainPartition * const domain );
 protected:
 
   virtual void PostProcessInput() override;
@@ -366,16 +384,6 @@ private:
    * once the number of phases/components is known (e.g. component fractions)
    */
   void ResizeFields( MeshLevel * const meshLevel );
-
-  /**
-   * @brief Initialize all variables from initial conditions
-   * @param domain the domain containing the mesh and fields
-   *
-   * Initialize all variables from initial conditions. This calculating primary variable values
-   * from prescribed intermediate values (i.e. global densities from global fractions)
-   * and any applicable hydrostatic equilibration of the domain
-   */
-  void InitializeFluidState( DomainPartition * const domain );
 
   /**
    * @brief Backup current values of all constitutive fields that participate in the accumulation term

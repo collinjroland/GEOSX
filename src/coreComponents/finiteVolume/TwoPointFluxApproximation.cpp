@@ -389,9 +389,9 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
         });
         for( localIndex i = 0; i < 2; i++ )
         {
-          stencilWeights[i] = std::fabs(coarseFlowRate[i] / ( coarseAveragePressure1 - coarseAveragePressure2 )) * std::pow(-1,i) ; // TODO sign ?
+          stencilWeights[i] = std::fabs(coarseFlowRate[i] / ( coarseAveragePressure1 - coarseAveragePressure2 )) * std::pow(-1,i) *10000 ; // TODO sign ?
         //  stencilWeights[i] = 1e-13* std::pow(-1,i) ; // TODO sign ?
-          //std::cout << "trans : " <<  stencilWeights[i] << std::endl;
+          std::cout << "trans : " <<  stencilWeights[i] << std::endl;
         }
         coarseStencil.add(stencilCells.data(), stencilCells, stencilWeights, 0.);
         interfaces.insert(std::make_pair(aggregateNumber1, aggregateNumber2));
@@ -513,9 +513,10 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
       GEOS_LOG_RANK( faceGhostRank[kf] << " " << er0 << " " << esr0 << " " << ei0);
       GEOS_LOG_RANK( faceGhostRank[kf] << " " << er1 << " " << esr1 << " " << ei1);
     }
-    /*
     aggregate0.aggregateGlobalIndex = aggregateGlobalIndexes[er0][esr0][ei0];
     aggregate1.aggregateGlobalIndex = aggregateGlobalIndexes[er1][esr1][ei1];
+    if ( aggregate0.aggregateGlobalIndex != aggregate1.aggregateGlobalIndex )
+      continue;
 
     AggregateCouple coupleToFind;
     coupleToFind.aggregate0 = aggregate0;
@@ -553,7 +554,6 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
     couple->aggregate0.aggregateLocalIndex = aggregateElement->m_globalToLocalMap.at(aggregateGlobalIndexes[er0][esr0][ei0]);
     couple->aggregate1.aggregateLocalIndex = aggregateElement->m_globalToLocalMap.at(aggregateGlobalIndexes[er1][esr1][ei1]);
 
-    */
   }
   GEOS_ERROR_IF(true,"end");
   /*

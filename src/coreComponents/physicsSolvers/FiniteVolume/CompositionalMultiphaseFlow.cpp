@@ -144,6 +144,36 @@ void CompositionalMultiphaseFlow::RegisterDataOnMesh(ManagedGroup * const MeshBo
 
       elementSubRegion->RegisterViewWrapper< array1d<globalIndex> >( viewKeyStruct::blockLocalDofNumberString );
     });
+
+    meshLevel->getElemManager()->forElementSubRegions<AggregateElementSubRegion>( [&] (  auto * const aggregateRegion) 
+    {
+      aggregateRegion->template RegisterViewWrapper< array1d<real64> >( viewKeyStruct::pressureString )->setPlotLevel(PlotLevel::LEVEL_0);
+      aggregateRegion->template RegisterViewWrapper< array1d<real64> >( viewKeyStruct::deltaPressureString );
+      aggregateRegion->template RegisterViewWrapper< array1d<real64> >( viewKeyStruct::bcPressureString );
+
+      aggregateRegion->template RegisterViewWrapper< array2d<real64> >( viewKeyStruct::globalCompDensityString )->setPlotLevel(PlotLevel::LEVEL_0);
+      aggregateRegion->template RegisterViewWrapper< array2d<real64> >( viewKeyStruct::deltaGlobalCompDensityString );
+
+      aggregateRegion->template RegisterViewWrapper< array2d<real64> >( viewKeyStruct::globalCompFractionString )->setPlotLevel(PlotLevel::LEVEL_0);
+      aggregateRegion->template RegisterViewWrapper< array3d<real64> >( viewKeyStruct::dGlobalCompFraction_dGlobalCompDensityString );
+
+      aggregateRegion->template RegisterViewWrapper< array2d<real64> >( viewKeyStruct::phaseVolumeFractionString )->setPlotLevel(PlotLevel::LEVEL_0);
+      aggregateRegion->template RegisterViewWrapper< array2d<real64> >( viewKeyStruct::dPhaseVolumeFraction_dPressureString );
+      aggregateRegion->template RegisterViewWrapper< array3d<real64> >( viewKeyStruct::dPhaseVolumeFraction_dGlobalCompDensityString );
+
+      aggregateRegion->template RegisterViewWrapper< array2d<real64> >( viewKeyStruct::phaseMobilityString )->setPlotLevel(PlotLevel::LEVEL_0);
+      aggregateRegion->template RegisterViewWrapper< array2d<real64> >( viewKeyStruct::dPhaseMobility_dPressureString );
+      aggregateRegion->template RegisterViewWrapper< array3d<real64> >( viewKeyStruct::dPhaseMobility_dGlobalCompDensityString );
+
+      aggregateRegion->template RegisterViewWrapper< array2d<real64> >( viewKeyStruct::phaseVolumeFractionOldString );
+      aggregateRegion->template RegisterViewWrapper< array2d<real64> >( viewKeyStruct::phaseDensityOldString );
+      aggregateRegion->template RegisterViewWrapper< array3d<real64> >( viewKeyStruct::phaseComponentFractionOldString );
+      aggregateRegion->template RegisterViewWrapper< array1d<real64> >( viewKeyStruct::porosityOldString );
+
+      aggregateRegion->template RegisterViewWrapper< array1d<globalIndex> >( viewKeyStruct::blockLocalDofNumberString );
+
+
+    });
   }
 }
 
@@ -231,6 +261,27 @@ void CompositionalMultiphaseFlow::ResizeFields( MeshLevel * const meshLevel )
     subRegion->getReference<array2d<real64>>(viewKeyStruct::phaseDensityOldString).resizeDimension<1>(NP);
     subRegion->getReference<array3d<real64>>(viewKeyStruct::phaseComponentFractionOldString).resizeDimension<1,2>(NP, NC);
   });
+
+    meshLevel->getElemManager()->forElementSubRegions<AggregateElementSubRegion>( [&] (  auto * const aggregateRegion) 
+    {
+    aggregateRegion->template getReference<array2d<real64>>(viewKeyStruct::globalCompDensityString).template resizeDimension<1>(NC);
+    aggregateRegion->template getReference<array2d<real64>>(viewKeyStruct::deltaGlobalCompDensityString).template resizeDimension<1>(NC);
+
+    aggregateRegion->template getReference<array2d<real64>>(viewKeyStruct::globalCompFractionString).template resizeDimension<1>(NC);
+    aggregateRegion->template getReference<array3d<real64>>(viewKeyStruct::dGlobalCompFraction_dGlobalCompDensityString).template resizeDimension<1,2>(NC, NC);
+
+    aggregateRegion->template getReference<array2d<real64>>(viewKeyStruct::phaseVolumeFractionString).template resizeDimension<1>(NP);
+    aggregateRegion->template getReference<array2d<real64>>(viewKeyStruct::dPhaseVolumeFraction_dPressureString).template resizeDimension<1>(NP);
+    aggregateRegion->template getReference<array3d<real64>>(viewKeyStruct::dPhaseVolumeFraction_dGlobalCompDensityString).template resizeDimension<1,2>(NP, NC);
+
+    aggregateRegion->template getReference<array2d<real64>>(viewKeyStruct::phaseMobilityString).template resizeDimension<1>(NP);
+    aggregateRegion->template getReference<array2d<real64>>(viewKeyStruct::dPhaseMobility_dPressureString).template resizeDimension<1>(NP);
+    aggregateRegion->template getReference<array3d<real64>>(viewKeyStruct::dPhaseMobility_dGlobalCompDensityString).template resizeDimension<1,2>(NP, NC);
+
+    aggregateRegion->template getReference<array2d<real64>>(viewKeyStruct::phaseVolumeFractionOldString).template resizeDimension<1>(NP);
+    aggregateRegion->template getReference<array2d<real64>>(viewKeyStruct::phaseDensityOldString).template resizeDimension<1>(NP);
+    aggregateRegion->template getReference<array3d<real64>>(viewKeyStruct::phaseComponentFractionOldString).template resizeDimension<1,2>(NP, NC);
+    });
 }
 
 void CompositionalMultiphaseFlow::UpdateComponentFraction( ManagedGroup * const dataGroup )
@@ -634,6 +685,29 @@ void CompositionalMultiphaseFlow::InitializePostInitialConditions_PreSubGroups( 
   InitializeFluidState( domain );
 }
 
+void CompositionalMultiphaseFlow::InitializeAfterAggreg( ManagedGroup * rootGroup )
+{
+  GEOSX_MARK_FUNCTION;
+
+  DomainPartition * domain = rootGroup->group_cast<DomainPartition*>();
+  MeshLevel * mesh = domain->getMeshBody(0)->getMeshLevel(0);
+  ConstitutiveManager * const constitutiveManager = domain->getConstitutiveManager();
+
+  // set mass fraction flag on main model
+  // TODO find a way to set this before constitutive model is duplicated and attached to subregions?
+  {
+    MultiFluidBase * const fluid = constitutiveManager->GetConstitituveRelation<MultiFluidBase>( m_fluidName );
+    fluid->setMassFlag( static_cast<bool>(m_useMass) );
+  }
+
+  // set mass fraction flag on subregion models
+  applyToSubRegions( mesh, [&] ( ElementSubRegionBase * const subRegion )
+  {
+    MultiFluidBase * const fluid = GetConstitutiveModel<MultiFluidBase>( subRegion, m_fluidName );
+    fluid->setMassFlag( static_cast<bool>(m_useMass) );
+  });
+}
+
 real64 CompositionalMultiphaseFlow::SolverStep( real64 const & time_n,
                                                 real64 const & dt,
                                                 integer const cycleNumber,
@@ -766,6 +840,7 @@ void CompositionalMultiphaseFlow::SetNumRowsAndTrilinosIndices( MeshLevel * cons
 
   // loop over all elements and set the dof number if the element is not a ghost
   ReduceSum< reducePolicy, localIndex  > localCount(0);
+  //elementRegionManager->getElemManager()->forElementSubRegions( [&]( ObjectManagerBase * const subRegion )
   forAllElemsInMesh<RAJA::seq_exec>( meshLevel, GEOSX_LAMBDA ( localIndex const er,
                                                                localIndex const esr,
                                                                localIndex const ei )
@@ -777,7 +852,7 @@ void CompositionalMultiphaseFlow::SetNumRowsAndTrilinosIndices( MeshLevel * cons
     }
   });
 
-  GEOS_ERROR_IF( localCount != numLocalRows, "Number of DOF assigned does not match numLocalRows" );
+  GEOS_ERROR_IF( localCount != numLocalRows, "Number of DOF assigned ("<<localCount<< ") does not match numLocalRows (" << numLocalRows << ")" );
 }
 
 void CompositionalMultiphaseFlow::SetSparsityPattern( DomainPartition const * const domain,
@@ -785,6 +860,11 @@ void CompositionalMultiphaseFlow::SetSparsityPattern( DomainPartition const * co
 {
   MeshLevel const * const meshLevel = domain->getMeshBodies()->GetGroup<MeshBody>(0)->getMeshLevel(0);
   ElementRegionManager const * const elementRegionManager = meshLevel->getElemManager();
+
+  if( m_aggregateMode )
+  {
+    m_discretizationName = "coarseSinglePhaseTPFA";
+  }
 
   ElementRegionManager::ElementViewAccessor<arrayView1d<globalIndex>> const & dofNumber =
     elementRegionManager->ConstructViewAccessor<array1d<globalIndex>, arrayView1d<globalIndex>>( viewKeyStruct::blockLocalDofNumberString );
@@ -918,7 +998,7 @@ void CompositionalMultiphaseFlow::SetupSystem( DomainPartition * const domain,
   globalIndex numGlobalRows = 0;
 
   // get the number of local elements, and ghost elements...i.e. local rows and ghost rows
-  elementRegionManager->forElementSubRegions( [&]( ObjectManagerBase * const subRegion )
+  applyToSubRegions( mesh, [&] ( ElementSubRegionBase * const subRegion )
   {
     numLocalRows += subRegion->size() - subRegion->GetNumberOfGhosts();
   });
