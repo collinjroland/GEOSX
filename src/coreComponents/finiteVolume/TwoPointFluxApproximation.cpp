@@ -402,7 +402,7 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
     }
 });
 
-//GEOS_ERROR_IF(true,"error");
+GEOS_ERROR_IF(true,coarseStencil.numConnections());
   float time1 = static_cast<float>( (clock() - start_time)) / CLOCKS_PER_SEC; 
   GEOS_LOG_RANK("upscaling in "<< time1);
 }
@@ -512,11 +512,6 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
     Aggregate aggregate0;
     Aggregate aggregate1;
 
-    if (ei0 == -1 || ei1 == -1)
-    {
-      GEOS_LOG_RANK( faceGhostRank[kf] << " " << er0 << " " << esr0 << " " << ei0);
-      GEOS_LOG_RANK( faceGhostRank[kf] << " " << er1 << " " << esr1 << " " << ei1);
-    }
     aggregate0.aggregateGlobalIndex = aggregateGlobalIndexes[er0][esr0][ei0];
     aggregate1.aggregateGlobalIndex = aggregateGlobalIndexes[er1][esr1][ei1];
     if ( aggregate0.aggregateGlobalIndex != aggregate1.aggregateGlobalIndex )
@@ -557,9 +552,13 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
 
     couple->aggregate0.aggregateLocalIndex = aggregateElement->m_globalToLocalMap.at(aggregateGlobalIndexes[er0][esr0][ei0]);
     couple->aggregate1.aggregateLocalIndex = aggregateElement->m_globalToLocalMap.at(aggregateGlobalIndexes[er1][esr1][ei1]);
-
   }
-  GEOS_ERROR_IF(true,"end");
+
+  // Compute the half transmissibilities
+  for(auto & aggregateCouple : adjacentAggregates)
+  {
+  }
+  GEOS_ERROR_IF(true,adjacentAggregates.size());
   /*
   MeshLevel * const mesh = domain->getMeshBodies()->GetGroup<MeshBody>(0)->getMeshLevel(0);
   ElementRegionManager * const elemManager = mesh->getElemManager();

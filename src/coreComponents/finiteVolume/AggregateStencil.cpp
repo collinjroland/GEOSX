@@ -74,7 +74,7 @@ void AggregateStencil::Execute( real64 const time_n,
 
   // Compute the coarse stencil
   //GEOS_ERROR_IF(true,"hein??");
-  coarseFluxApprox->computeCoarsetencil(domain->group_cast<DomainPartition*>(), fineFluxApprox->getStencil(),coarseFluxApprox->getStencil(),"pressure1","pressure2","pressure3"); // TODO hardcoded.
+  coarseFluxApprox->computeBestCoarsetencil(domain->group_cast<DomainPartition*>(), fineFluxApprox->getStencil(),coarseFluxApprox->getStencil(),"pressure1","pressure2","pressure3"); // TODO hardcoded.
 
   // Upscale porosity and initial Pressure
   MeshLevel * const mesh = domain->group_cast< DomainPartition* >()->getMeshBody( 0 )->getMeshLevel( 0 );
@@ -97,7 +97,6 @@ void AggregateStencil::Execute( real64 const time_n,
     }
   });
 
-  /*
   auto * solver =
     domain->getParent()->GetGroup<PhysicsSolverManager>( "Solvers" )->GetGroup("SinglePhaseFlow"); // TODO hardcoded
 
@@ -105,8 +104,8 @@ void AggregateStencil::Execute( real64 const time_n,
   solver->group_cast< SinglePhaseFlow *>()->updateSolid();
   solver->group_cast< SinglePhaseFlow *>()->updateFluid();
   solver->group_cast< SinglePhaseFlow *>()->InitializeAfterAggreg(domain);
-  */
 
+  /*
   auto * solver =
     domain->getParent()->GetGroup<PhysicsSolverManager>( "Solvers" )->GetGroup("compflow"); // TODO hardcoded
 
@@ -116,6 +115,7 @@ void AggregateStencil::Execute( real64 const time_n,
   solver->group_cast< CompositionalMultiphaseFlow *>()->updateRelPerm();
   solver->group_cast< CompositionalMultiphaseFlow *>()->InitializeAfterAggreg(domain);
   solver->group_cast< CompositionalMultiphaseFlow *>()->InitializeFluidState(domain->group_cast<DomainPartition*>());
+  */
 
   /*
   constitutive::ConstitutiveManager * constitutiveManager = domain->GetGroup<constitutive::ConstitutiveManager>(keys::ConstitutiveManager);
