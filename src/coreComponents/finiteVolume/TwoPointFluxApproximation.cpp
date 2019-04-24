@@ -31,6 +31,7 @@
 #include "MPI_Communications/NeighborCommunicator.hpp"
 #include "MPI_Communications/CommunicationTools.hpp"
 #include <unordered_set>
+#include <ctime>
 
 namespace geosx
 {
@@ -187,6 +188,7 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
                                                      std::string const & elementaryPressure2Name,
                                                      std::string const & elementaryPressure3Name )
 {
+  time_t  start_time = clock();      
   MeshLevel * const mesh = domain->getMeshBodies()->GetGroup<MeshBody>(0)->getMeshLevel(0);
   ElementRegionManager * const elemManager = mesh->getElemManager();
   ElementRegion * const elemRegion = elemManager->GetRegion(0); // TODO : still one region / elemsubregion
@@ -389,9 +391,9 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
         });
         for( localIndex i = 0; i < 2; i++ )
         {
-          stencilWeights[i] = std::fabs(coarseFlowRate[i] / ( coarseAveragePressure1 - coarseAveragePressure2 )) * std::pow(-1,i) *10000 ; // TODO sign ?
+          stencilWeights[i] = std::fabs(coarseFlowRate[i] / ( coarseAveragePressure1 - coarseAveragePressure2 )) * std::pow(-1,i) ; // TODO sign ?
         //  stencilWeights[i] = 1e-13* std::pow(-1,i) ; // TODO sign ?
-          std::cout << "trans : " <<  stencilWeights[i] << std::endl;
+          //std::cout << "trans : " <<  stencilWeights[i] << std::endl;
         }
         coarseStencil.add(stencilCells.data(), stencilCells, stencilWeights, 0.);
         interfaces.insert(std::make_pair(aggregateNumber1, aggregateNumber2));
@@ -401,6 +403,8 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
 });
 
 //GEOS_ERROR_IF(true,"error");
+  float time1 = static_cast<float>( (clock() - start_time)) / CLOCKS_PER_SEC; 
+  GEOS_LOG_RANK("upscaling in "<< time1);
 }
 
 
