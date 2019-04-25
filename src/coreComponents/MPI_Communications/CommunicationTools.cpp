@@ -561,7 +561,6 @@ void CommunicationTools::FindGhosts( MeshLevel * const meshLevel,
     {
       ElementSubRegionBase * const subRegion = elemRegion->GetSubRegion(esr);
       subRegion->FixUpDownMaps(false);
-      GEOS_LOG_RANK("number of ghost " << subRegion->GetNumberOfGhosts() );
     }
   }
 

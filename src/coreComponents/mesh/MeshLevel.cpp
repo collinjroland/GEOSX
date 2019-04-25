@@ -168,7 +168,6 @@ void MeshLevel::GenerateAdjacencyLists( localIndex_array & seedNodeList,
     {
       auto & aggregateIndexSave =
         subRegion->template getWrapper< array1d< globalIndex > > (CellElementSubRegion::viewKeyStruct::aggregateIndexString)->reference();
-      GEOS_LOG_RANK("DEBUG JEUDI "<< aggregateIndexSave.size());
       elementAdjacencyList[kReg][kSubReg].get().clear();
       elementAdjacencyList[kReg][kSubReg].get().resize( integer_conversion<localIndex>(elementAdjacencySet[kReg][kSubReg].size()) );
       std::copy( elementAdjacencySet[kReg][kSubReg].begin(),
@@ -178,7 +177,6 @@ void MeshLevel::GenerateAdjacencyLists( localIndex_array & seedNodeList,
       for( localIndex i = 0 ; i < elementAdjacencyList[kReg][kSubReg].get().size(); i++ )
       {
         globalIndex aggregateIndex = aggregateIndexSave[elementAdjacencyList[kReg][kSubReg][i]];
-        GEOS_LOG_RANK(i << " " << elementAdjacencyList[kReg][kSubReg][i]);
         if( uniqueAggregate.find(aggregateIndex) == uniqueAggregate.end())
         {
           elementAdjacencyList[kReg][aggRegionIndex].get().push_back(aggRegion->m_globalToLocalMap.at(aggregateIndex));

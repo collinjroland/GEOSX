@@ -24,6 +24,7 @@
 #include "managers/Events/EventBase.hpp"
 #include "common/TimingMacros.hpp"
 #include "MPI_Communications/CommunicationTools.hpp"
+#include <ctime>
 
 namespace geosx
 {
@@ -194,8 +195,11 @@ void EventManager::Run(dataRepository::ManagedGroup * domain)
 
       if (eventForecast <= 0)
       {
-        std::cout << "EXECUTRE "<< subEvent->getName() << std::endl;
+        std::cout << "EXECUTING NOW "<< subEvent->getName() << std::endl;
+        time_t  start_time = clock();
         subEvent->Execute(time, dt, cycle, 0, 0, domain);
+        float time1 = static_cast<float>( (clock() - start_time)) / CLOCKS_PER_SEC;
+        GEOS_LOG_RANK( subEvent->getName()<< " in "<< time1);
       }
 
       // Estimate the time-step for the next cycle
