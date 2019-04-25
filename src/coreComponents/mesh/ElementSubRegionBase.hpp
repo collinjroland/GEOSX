@@ -50,6 +50,8 @@ public:
     static constexpr auto elementCenterString          = "elementCenter";
     static constexpr auto elementVolumeString          = "elementVolume";
     static constexpr auto halfTransmissibilitiesString = "halfTransmissibilities";
+    static constexpr auto neighborsString = "neighbors";
+    static constexpr auto nbNeighborsString = "nbNeighbors";
   };
 
   struct groupKeyStruct : public ObjectManagerBase::groupKeyStruct
@@ -138,6 +140,16 @@ protected:
   string m_elementTypeString;
 
   array1d< map< globalIndex, real64 > > m_halfTransmissibilities;
+  
+  //array2d< globalIndex > m_neighbors;
+  //array2d<real64 > m_halfTransmissibilities;
+
+  /*
+  array1d< localIndex > m_nbNeighbors;
+  array1d< localIndex > m_toto;
+  array1d< real64* > m_halfTransmissibilities;
+  array1d< globalIndex* > m_neighbors;
+  */
 
   FiniteElementBase::ElementType m_elementType;
 //  template< LAMBDA lambda >

@@ -66,7 +66,52 @@ protected:
   virtual void computeBoundaryStencil( DomainPartition const & domain,
                                        set<localIndex> const & faceSet,
                                        BoundaryStencil & stencil ) override;
+private:
+  struct Aggregate
+  {
+    localIndex aggregateLocalIndex;
+    globalIndex  aggregateGlobalIndex;
+    localIndex ghostRank;
+    localIndex er;
+    localIndex esr;
+    array1d< localIndex > cellBoundInterface;
+    bool  operator==( const Aggregate & rhs) const
+    {
+      return aggregateGlobalIndex == rhs.aggregateGlobalIndex;
+    }
+  };
 
+  struct AggregateCouple
+  {
+    Aggregate aggregate0;
+    Aggregate aggregate1;
+    array1d< localIndex > faceIndicies;
+
+    bool operator==( const AggregateCouple & rhs) const
+    {
+      return (aggregate0 == rhs.aggregate0 && aggregate1 == rhs.aggregate1) || (aggregate0 == rhs.aggregate1 && aggregate1 == rhs.aggregate0);
+    }
+
+    /*
+    bool GhostOwnedRelation() const
+    {
+      return aggregate0.ghostRank >= 0 || aggregate1.ghostRank >= 0;
+    }
+    */
+
+    bool GhostGhostRelation() const
+    {
+      return aggregate0.ghostRank >= 0 && aggregate1.ghostRank >= 0;
+    }
+  };
+  void computeCoarseHT( DomainPartition * domain,
+                        std::string const & elementaryPressure1Name,
+                        std::string const & elementaryPressure2Name,
+                        std::string const & elementaryPressure3Name,
+                        const AggregateCouple& aggregateCouple,
+                        const Aggregate& aggregate0,
+                        const Aggregate& aggregate1);
+                         
 };
 
 }

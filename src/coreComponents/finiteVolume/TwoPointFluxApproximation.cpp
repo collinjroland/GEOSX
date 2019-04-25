@@ -423,6 +423,12 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
   ElementRegion * const elemRegion = elemManager->GetRegion(0); // TODO harcoded;
   AggregateElementSubRegion *  aggregateElement = elemManager->GetRegion(0)->GetSubRegion("coarse")->group_cast< AggregateElementSubRegion * >(); // harcoded
   auto aggregateGlobalIndexes = elemManager->ConstructViewAccessor<array1d<globalIndex>, arrayView1d<globalIndex>>( CellElementSubRegion::viewKeyStruct::aggregateIndexString );
+  //auto halfTrans = elemManager->ConstructViewAccessor<array2d< real64 > , arrayView2d< real64 > >( ElementSubRegionBase::viewKeyStruct::halfTransmissibilitiesString );
+  //auto halfTrans = elemManager->ConstructViewAccessor<array1d< array1d < real64 > >, arrayView1d< array1d <real64 > > >( ElementSubRegionBase::viewKeyStruct::halfTransmissibilitiesString );
+  //auto halfTrans = elemManager->ConstructViewAccessor<array1d< real64* > , arrayView1d< real64*  > >( ElementSubRegionBase::viewKeyStruct::halfTransmissibilitiesString );
+  //auto nbNeighbors = elemManager->ConstructViewAccessor<array1d< localIndex > , arrayView1d< localIndex  > >("nbNeighbors" );
+  auto halfTrans = elemManager->ConstructViewAccessor<array1d< map< globalIndex, real64 >>, arrayView1d< map< globalIndex, real64> > >( ElementSubRegionBase::viewKeyStruct::halfTransmissibilitiesString );
+  //auto neighbors = elemManager->ConstructViewAccessor<array2d< real64 > , arrayView2d< real64 > >( ElementSubRegionBase::viewKeyStruct::neighborsString );
 
   arrayView2d<localIndex const> const & elemRegionList     = faceManager->elementRegionList();
   arrayView2d<localIndex const> const & elemSubRegionList  = faceManager->elementSubRegionList();
@@ -434,7 +440,7 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
                                         CellBlock::viewKeyStruct::elementCenterString);
 
   ElementRegionManager::ElementViewAccessor<arrayView1d<R1Tensor>> const coefficient =
-    elemManager->ConstructViewAccessor< array1d<R1Tensor>, arrayView1d<R1Tensor> >( m_coeffName );
+    elemManager->ConstructViewAccessor< array1d<R1Tensor>, arrayView1d<R1Tensor> >( "permeability" );
 
   arrayView1d<integer const> const & faceGhostRank =
     faceManager->getReference<array1d<integer>>( ObjectManagerBase::viewKeyStruct::ghostRankString );
@@ -459,44 +465,6 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
 
   // loop over faces and calculate faceArea, faceNormal and faceCenter
   real64 const areaTolerance = pow( meshBody->getGlobalLengthScale() * this->m_areaRelTol, 2 );
-
-  struct Aggregate
-  {
-    localIndex aggregateLocalIndex;
-    globalIndex  aggregateGlobalIndex;
-    localIndex ghostRank;
-    localIndex er;
-    localIndex esr;
-    array1d< localIndex > cellBoundInterface;
-    bool  operator==( const Aggregate & rhs) const
-    {
-      return aggregateGlobalIndex == rhs.aggregateGlobalIndex;
-    }
-  };
-
-  struct AggregateCouple
-  {
-    Aggregate aggregate0;
-    Aggregate aggregate1;
-    array1d< localIndex > faceIndicies;
-
-    bool operator==( const AggregateCouple & rhs) const
-    {
-      return (aggregate0 == rhs.aggregate0 && aggregate1 == rhs.aggregate1) || (aggregate0 == rhs.aggregate1 && aggregate1 == rhs.aggregate0);
-    }
-
-    /*
-    bool GhostOwnedRelation() const
-    {
-      return aggregate0.ghostRank >= 0 || aggregate1.ghostRank >= 0;
-    }
-    */
-
-    bool GhostGhostRelation() const
-    {
-      return aggregate0.ghostRank >= 0 && aggregate1.ghostRank >= 0;
-    }
-  };
 
   std::vector< AggregateCouple > adjacentAggregates;
   adjacentAggregates.reserve(faceManager->size());
@@ -622,6 +590,7 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
       aggregate1 = aggregateCouple.aggregate1;
     }
 
+    /*
     R1Tensor aggregateCenter0 = aggregateElement->getElementCenter()[aggregate0.aggregateLocalIndex];
     R1Tensor aggregateCenter1 = aggregateElement->getElementCenter()[aggregate1.aggregateLocalIndex];
 
@@ -695,474 +664,280 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
     // Compute the Pressure at the interface
     real64 pressureAtTheInterface = 0.;
     real64 volumeOfCellsAtTheInterface = 0;
-    for( localIndex boundEl : aggregate0.cellBoundInterface )
+
+    // Compute the coarse flow rate and the pressure at the interfaces
+    real64 coarseFlowRate = 0.;
+    for( localIndex kf : aggregateCouple.faceIndicies )
     {
-      pressureAtTheInterface += ( pTarget[0] * pressure1[0][0][boundEl]
-                                + pTarget[1] * pressure2[0][0][boundEl]
-                                + pTarget[2] * pressure3[0][0][boundEl]
-                                + pTarget[3] )* elemRegion->GetSubRegion(0)->getElementVolume()[boundEl];
-      volumeOfCellsAtTheInterface += elemRegion->GetSubRegion(0)->getElementVolume()[boundEl];
-    }
-    for( localIndex boundEl : aggregate1.cellBoundInterface )
-    {
-      pressureAtTheInterface += ( pTarget[0] * pressure1[0][0][boundEl]
-                                + pTarget[1] * pressure2[0][0][boundEl]
-                                + pTarget[2] * pressure3[0][0][boundEl]
-                                + pTarget[3] )* elemRegion->GetSubRegion(0)->getElementVolume()[boundEl];
-      volumeOfCellsAtTheInterface += elemRegion->GetSubRegion(0)->getElementVolume()[boundEl];
+      faceArea = computationalGeometry::Centroid_3DPolygon( faceToNodes[kf], X, faceCenter, faceNormal, areaTolerance );
+      faceWeightInv = 0.0;
+      for( localIndex ke = 0; ke < 2 ; ke++)
+      {
+        localIndex const ei  = elemList[kf][ke];
+
+        real64 pressureEi = pTarget[0] * pressure1[0][0][ei]
+                          + pTarget[1] * pressure2[0][0][ei]
+                          + pTarget[2] * pressure3[0][0][ei]
+                          + pTarget[3];
+
+        real64 volumeEi = elemRegion->GetSubRegion(0)->getElementVolume()[ei];
+
+        pressureAtTheInterface += pressureEi * volumeEi;
+        volumeOfCellsAtTheInterface += volumeEi;
+        cellToFaceVec = faceCenter;
+        cellToFaceVec -= elemCenter[0][0][ei];
+
+        if (ke == 1)
+          cellToFaceVec *= -1.0;
+
+        real64 const c2fDistance = cellToFaceVec.Normalize();
+
+        makeFullTensor(coefficient[0][0][ei], coefTensor);
+
+        faceConormal.AijBj(coefTensor, faceNormal);
+        real64 const ht = Dot(cellToFaceVec, faceConormal) * faceArea / c2fDistance;
+        faceWeightInv += 1.0 / ht; // XXX: safeguard against div by zero?
+      }
+      faceWeight = 1.0 / faceWeightInv; // XXX: safeguard against div by zero?
+
+      // ensure consistent normal orientation
+      if (Dot(cellToFaceVec, faceNormal) < 0)
+        faceWeight *= -1;
+      for( localIndex ke = 0; ke < 2 ; ke++)
+      {
+        localIndex const ei  = elemList[kf][ke];
+
+        real64 pressureEi = pTarget[0] * pressure1[0][0][ei]
+                          + pTarget[1] * pressure2[0][0][ei]
+                          + pTarget[2] * pressure3[0][0][ei]
+                          + pTarget[3];
+        coarseFlowRate += faceWeight * std::pow(-1,ke) *  pressureEi;
+      }
     }
     pressureAtTheInterface /= volumeOfCellsAtTheInterface;
+    real64 coarseHalfTransmissibility = std::fabs( coarseFlowRate / ( coarseAveragePressure - pressureAtTheInterface) );
+    */
 
-    // Compute the coarse flow rate
-
-
+    computeCoarseHT(domain, 
+                   elementaryPressure1Name,
+                   elementaryPressure2Name,
+                   elementaryPressure3Name,
+                   aggregateCouple,
+                   aggregate0,
+                   aggregate1);
+    if( aggregate1.ghostRank < 0 )
+    {
+      computeCoarseHT(domain, 
+                     elementaryPressure1Name,
+                     elementaryPressure2Name,
+                     elementaryPressure3Name,
+                     aggregateCouple,
+                     aggregate1,
+                     aggregate0);
+    }
     // We then check if the couple of aggregates is not a relation ghost <---> owned with rank(ghost) < rank(owned).
+    /*
     if( aggregateCouple.aggregate0.ghostRank >= 0  && mpiRank > aggregateCouple.aggregate0.ghostRank )
       continue;
 
     if( aggregateCouple.aggregate1.ghostRank >= 0  && mpiRank > aggregateCouple.aggregate1.ghostRank )
       continue;
+      */
 
-    count++;
   }
-  GEOS_ERROR_IF(true, " " << adjacentAggregates.size());
-  /*
-  MeshLevel * const mesh = domain->getMeshBodies()->GetGroup<MeshBody>(0)->getMeshLevel(0);
-  ElementRegionManager * const elemManager = mesh->getElemManager();
-  ElementRegion * const elemRegion = elemManager->GetRegion(0); // TODO : still one region / elemsubregion
-  AggregateElementSubRegion * const aggregateElement = elemRegion->GetSubRegion("coarse")->group_cast< AggregateElementSubRegion * >();
-  auto aggregateGlobalIndex = elemManager->ConstructViewAccessor<array1d<globalIndex>, arrayView1d<globalIndex>>( CellElementSubRegion::viewKeyStruct::aggregateIndexString );
- // auto aggregateHalfTrans = elemManager->ConstructViewAccessor<array1d<map<globalIndex, real64>>, arrayView1d<map<globalIndex,real64>>>( AggregateElementSubRegion::viewKeyStruct::halfTransmissibilitiesString );
-  auto aggregateHalfTrans = elemManager->ConstructViewAccessor<array1d< map<globalIndex,real64>>, arrayView1d<map<globalIndex,real64>>>( AggregateElementSubRegion::viewKeyStruct::halfTransmissibilitiesString );
-  //const array1d< localIndex > & fineToCoarse = aggregateElement->GetFineToCoarseMap();
-  GEOS_LOG_RANK( "half trans size "<< aggregateHalfTrans[0][1].size());
-  GEOS_LOG_RANK( "number of ghosts "<< aggregateElement->GetNumberOfGhosts());
-  // TODO : will it work for fractures ? (no)
   std::map<string, string_array > fieldNames;
-  fieldNames["elems"].push_back( AggregateElementSubRegion::viewKeyStruct::halfTransmissibilitiesString );
+  fieldNames["elems"].push_back( ElementSubRegionBase::viewKeyStruct::halfTransmissibilitiesString );
 
   array1d<NeighborCommunicator> & comms =
     domain->getReference< array1d<NeighborCommunicator>>( domain->viewKeys.neighbors );
 
+  GEOS_LOG_RANK_0("BEFORE ");
+
+  for(int i = 0; i < halfTrans[0][1].size(); i++)
+  {
+    GEOS_LOG_RANK_0(halfTrans[0][1][i].size());
+  }
   CommunicationTools::SynchronizeFields( fieldNames, mesh, comms );
-
-  array1d<CellDescriptor> stencilCells(2);
-  array1d<real64> stencilWeights(2);
-
-  std::set< std::pair< localIndex, localIndex > > interfaces;
-  fineStencil.forAll( [&] ( StencilCollection<CellDescriptor, real64>::Accessor stencil ) //TODO maye find a clever way to iterate between coarse interfaces ?
+  GEOS_LOG_RANK_0("AFTER");
+  for(int i = 0; i < halfTrans[0][1].size(); i++)
   {
-    localIndex const stencilSize = stencil.size();
-    if( stencil.size() == 2)
-    {
-      CellDescriptor const & cell1 = stencil.connectedIndex(0);
-      CellDescriptor const & cell2 = stencil.connectedIndex(1);
-      localIndex aggregateNumber1 = aggregateElement->m_globalToLocalMap.at(aggregateGlobalIndex[cell1.region][cell1.subRegion][cell1.index]);
-      localIndex aggregateNumber2 = aggregateElement->m_globalToLocalMap.at(aggregateGlobalIndex[cell2.region][cell2.subRegion][cell2.index]);
-     // if( aggregateNumber1 != aggregateNumber2 && interfaces.find(std::make_pair(aggregateNumber1,aggregateNumber2)) == interfaces.end()  && interfaces.find(std::make_pair(aggregateNumber2,aggregateNumber1)) == interfaces.end()) // We find two adjacent aggregates TODO maybe find a clever way to iterate between coarse interfaces ?
-      //{
-      GEOS_LOG_RANK("allo");
-        if( aggregateElement->GhostRank()[aggregateNumber1] >=0)
-        {
-          GEOS_LOG_RANK("find a ghost for 1");
-        }
-        if( aggregateElement->GhostRank()[aggregateNumber2] >=0)
-        {
-          GEOS_LOG_RANK("find a ghost for 2");
-        }
-     // }
-    }
-  });
-  for(int ii = 0; ii < aggregateElement->size(); ii++)
+    GEOS_LOG_RANK_0(halfTrans[0][1][i].size());
+  }
+  GEOS_ERROR_IF(true, " " << adjacentAggregates.size());
+}
+
+void TwoPointFluxApproximation::computeCoarseHT( DomainPartition * domain,
+                                                 std::string const & elementaryPressure1Name,
+                                                 std::string const & elementaryPressure2Name,
+                                                 std::string const & elementaryPressure3Name,
+                                                 const AggregateCouple& aggregateCouple,
+                                                 const Aggregate& aggregate0,
+                                                 const Aggregate& aggregate1)
+{
+  MeshBody * const meshBody = domain->getMeshBody(0);
+  MeshLevel * const mesh = meshBody->getMeshLevel(0);
+  NodeManager * const nodeManager = mesh->getNodeManager();
+  FaceManager * const faceManager = mesh->getFaceManager();
+  ElementRegionManager * const elemManager = mesh->getElemManager();
+  ElementRegion * const elemRegion = elemManager->GetRegion(0); // TODO harcoded;
+  AggregateElementSubRegion *  aggregateElement = elemManager->GetRegion(0)->GetSubRegion("coarse")->group_cast< AggregateElementSubRegion * >(); // harcoded
+  //auto halfTrans = elemManager->ConstructViewAccessor<array2d< real64 > , arrayView2d< real64 > >( ElementSubRegionBase::viewKeyStruct::halfTransmissibilitiesString );
+  auto halfTrans = elemManager->ConstructViewAccessor<array1d < map< globalIndex, real64 > >, arrayView1d< map< globalIndex, real64> > >( ElementSubRegionBase::viewKeyStruct::halfTransmissibilitiesString );
+//  auto halfTrans = elemManager->ConstructViewAccessor<array1d< array1d < real64 > >, arrayView1d< array1d <real64 > > >( ElementSubRegionBase::viewKeyStruct::halfTransmissibilitiesString );
+  //auto neighbors = elemManager->ConstructViewAccessor<array2d< real64 > , arrayView2d< real64 > >( ElementSubRegionBase::viewKeyStruct::neighborsString );
+
+  arrayView2d<localIndex const> const & elemList           = faceManager->elementList();
+  arrayView1d<R1Tensor const>   const & X = nodeManager->referencePosition();
+
+  ElementRegionManager::ElementViewAccessor<arrayView1d<R1Tensor>> const elemCenter =
+    elemManager->ConstructViewAccessor< array1d<R1Tensor>, arrayView1d<R1Tensor> >(
+                                        CellBlock::viewKeyStruct::elementCenterString);
+
+  ElementRegionManager::ElementViewAccessor<arrayView1d<R1Tensor>> const coefficient =
+    elemManager->ConstructViewAccessor< array1d<R1Tensor>, arrayView1d<R1Tensor> >( "permeability" );
+
+  array1d<array1d<localIndex>> const & faceToNodes = faceManager->nodeList();
+
+  R1Tensor faceCenter, faceNormal, faceConormal, cellToFaceVec;
+  R2SymTensor coefTensor;
+  real64 faceArea, faceWeight, faceWeightInv;
+  real64 const areaTolerance = pow( meshBody->getGlobalLengthScale() * this->m_areaRelTol, 2 );
+
+  ElementRegionManager::ElementViewAccessor<arrayView1d<real64>> pressure1 =
+    elemManager->ConstructViewAccessor<array1d<real64>, arrayView1d<real64>>( elementaryPressure1Name );
+  ElementRegionManager::ElementViewAccessor<arrayView1d<real64>> pressure2 =
+    elemManager->ConstructViewAccessor<array1d<real64>, arrayView1d<real64>>( elementaryPressure2Name );
+  ElementRegionManager::ElementViewAccessor<arrayView1d<real64>> pressure3 =
+    elemManager->ConstructViewAccessor<array1d<real64>, arrayView1d<real64>>( elementaryPressure3Name );
+
+  R1Tensor aggregateCenter0 = aggregateElement->getElementCenter()[aggregate0.aggregateLocalIndex];
+  R1Tensor aggregateCenter1 = aggregateElement->getElementCenter()[aggregate1.aggregateLocalIndex];
+
+  real64 aggregateVolume0 = aggregateElement->getElementVolume()[aggregate0.aggregateLocalIndex];
+  real64 aggregateVolume1 = aggregateElement->getElementVolume()[aggregate1.aggregateLocalIndex];
+
+  R1Tensor agg0toAgg1Direction = aggregateCenter0;
+  agg0toAgg1Direction -= aggregateCenter1;
+  agg0toAgg1Direction.Normalize();
+
+  // We compute half transmssibility aggregate 0 --- > aggregate 1
+
+  // Least square system on the fine cells of the aggregate0
+  int systemSize = integer_conversion< int >( aggregateElement->GetNbCellsPerAggregate( aggregate0.aggregateLocalIndex ) 
+      + aggregate1.cellBoundInterface.size());
+  Teuchos::LAPACK< int, real64 > lapack;
+  Teuchos::SerialDenseMatrix< int, real64 > A(systemSize, 4);
+  Teuchos::SerialDenseVector< int, real64 > pTarget(systemSize);
+
+  int count = 0;
+  aggregateElement->forGlobalFineCellsInAggregate( aggregate0.aggregateLocalIndex,
+      [&] ( globalIndex fineCellIndexGlobal )
+      {
+      localIndex fineCellIndex = elemRegion->GetSubRegion(0)->m_globalToLocalMap.at(fineCellIndexGlobal); //TODO hardcoded
+      A(count,0) = pressure1[0][0][fineCellIndex];
+      A(count,1) = pressure2[0][0][fineCellIndex];
+      A(count,2) = pressure3[0][0][fineCellIndex];
+      A(count,3) = 1.;
+
+      R1Tensor barycenterFineCell = elemRegion->GetSubRegion(aggregate0.esr)->getElementCenter()[fineCellIndex];
+      pTarget(count++) = barycenterFineCell[0]*agg0toAgg1Direction[0]
+      + barycenterFineCell[1]*agg0toAgg1Direction[1]
+      + barycenterFineCell[2]*agg0toAgg1Direction[2];
+      });
+  for( localIndex cellInOtherSide : aggregate1.cellBoundInterface )
   {
-          GEOS_LOG_RANK("allo??");
-    if(aggregateElement->GhostRank()[ii] >=0)
-    {
-          GEOS_LOG_RANK("find a ghost");
-    }
+    A(count,0) = pressure1[0][0][cellInOtherSide];
+    A(count,1) = pressure2[0][0][cellInOtherSide];
+    A(count,2) = pressure3[0][0][cellInOtherSide];
+    A(count,3) = 1.;
+
+    R1Tensor barycenterFineCell = elemRegion->GetSubRegion(0)->getElementCenter()[cellInOtherSide];
+    pTarget(count++) = barycenterFineCell[0]*agg0toAgg1Direction[0]
+      + barycenterFineCell[1]*agg0toAgg1Direction[1]
+      + barycenterFineCell[2]*agg0toAgg1Direction[2];
   }
 
-  GEOS_ERROR_IF(true,"debuuuuuuuuuuuug");
-  fineStencil.forAll( [&] ( StencilCollection<CellDescriptor, real64>::Accessor stencil ) //TODO maye find a clever way to iterate between coarse interfaces ?
+  // Solve the least square system
+  int info;
+  real64  rwork1;
+  real64 svd[4];
+  int rank;
+  lapack.GELSS(systemSize,4,1,A.values(),A.stride(),pTarget.values(),pTarget.stride(),svd,-1,&rank,&rwork1,-1,&info);
+  int lwork = static_cast< int > ( rwork1 );
+  real64 * rwork = new real64[lwork];
+  lapack.GELSS(systemSize,4,1,A.values(),A.stride(),pTarget.values(),pTarget.stride(),svd,-1,&rank,rwork,lwork,&info);
+
+  // Compute the coarseAveragePressure in aggregate 0
+  real64 coarseAveragePressure = 0.;
+  aggregateElement->forGlobalFineCellsInAggregate( aggregate0.aggregateLocalIndex,
+      [&] ( globalIndex fineCellIndexGlobal )
+      {
+      localIndex fineCellIndex = elemRegion->GetSubRegion(0)->m_globalToLocalMap.at(fineCellIndexGlobal); //TODO hardcoded
+      coarseAveragePressure += ( pTarget[0] * pressure1[0][0][fineCellIndex]
+          + pTarget[1] * pressure2[0][0][fineCellIndex]
+          + pTarget[2] * pressure3[0][0][fineCellIndex]
+          + pTarget[3] )* elemRegion->GetSubRegion(0)->getElementVolume()[fineCellIndex];
+      });
+  coarseAveragePressure /= aggregateVolume0;
+
+  // Compute the Pressure at the interface
+  real64 pressureAtTheInterface = 0.;
+  real64 volumeOfCellsAtTheInterface = 0;
+
+  // Compute the coarse flow rate and the pressure at the interfaces
+  real64 coarseFlowRate = 0.;
+  for( localIndex kf : aggregateCouple.faceIndicies )
   {
-    localIndex const stencilSize = stencil.size();
-    if( stencil.size() == 2)
+    faceArea = computationalGeometry::Centroid_3DPolygon( faceToNodes[kf], X, faceCenter, faceNormal, areaTolerance );
+    faceWeightInv = 0.0;
+    for( localIndex ke = 0; ke < 2 ; ke++)
     {
-      CellDescriptor const & cell1 = stencil.connectedIndex(0);
-      CellDescriptor const & cell2 = stencil.connectedIndex(1);
-      localIndex aggregateNumber1 = aggregateElement->m_globalToLocalMap.at(aggregateGlobalIndex[cell1.region][cell1.subRegion][cell1.index]);
-      localIndex aggregateNumber2 = aggregateElement->m_globalToLocalMap.at(aggregateGlobalIndex[cell2.region][cell2.subRegion][cell2.index]);
-      if( aggregateNumber1 != aggregateNumber2 && interfaces.find(std::make_pair(aggregateNumber1,aggregateNumber2)) == interfaces.end()  && interfaces.find(std::make_pair(aggregateNumber2,aggregateNumber1)) == interfaces.end()) // We find two adjacent aggregates TODO maybe find a clever way to iterate between coarse interfaces ?
-      {
-        if( aggregateElement->GhostRank()[aggregateNumber1] < 0 && aggregateElement->GhostRank()[aggregateNumber2] < 0)
-        {
-        stencilCells[0] = { cell1.region, 1, aggregateNumber1 }; // We can consider here that there is only 1 subregion
-        stencilCells[1] = { cell2.region, 1, aggregateNumber2 };
+      localIndex const ei  = elemList[kf][ke];
 
-        // Now we compute the transmissibilities
-        R1Tensor barycenter1 = aggregateElement->getElementCenter()[aggregateNumber1];
-        R1Tensor barycenter2 = aggregateElement->getElementCenter()[aggregateNumber2];
-        std::cout << "======================================"<< std::endl;
-        std::cout << "aggregateNumber1 : " << aggregateNumber1 << std::endl;
-        std::cout << "aggregateNumber2 : " << aggregateNumber2 << std::endl;
-        std::cout << "barycenter1 : " << barycenter1 << std::endl;
-        std::cout << "barycenter2 : " << barycenter2 << std::endl;
-        barycenter1 -= barycenter2; // normal between the two aggregates
-        barycenter1.Normalize();
-        //std::cout << "vector between the two aggregates : " << barycenter1 << std::endl;
+      real64 pressureEi = pTarget[0] * pressure1[0][0][ei]
+        + pTarget[1] * pressure2[0][0][ei]
+        + pTarget[2] * pressure3[0][0][ei]
+        + pTarget[3];
 
-        int systemSize = integer_conversion< int >(aggregateElement->GetNbCellsPerAggregate( aggregateNumber1 )
-                                                 + aggregateElement->GetNbCellsPerAggregate( aggregateNumber2 ));
-        Teuchos::LAPACK< int, real64 > lapack;
-        Teuchos::SerialDenseMatrix< int, real64 > A(systemSize, 4);
-        Teuchos::SerialDenseVector< int, real64 > pTarget(systemSize);
+      real64 volumeEi = elemRegion->GetSubRegion(0)->getElementVolume()[ei];
 
-        /// Get the elementary pressures
-        ElementRegionManager::ElementViewAccessor<arrayView1d<real64>> pressure1 =
-          elemManager->ConstructViewAccessor<array1d<real64>, arrayView1d<real64>>( elementaryPressure1Name );
-        ElementRegionManager::ElementViewAccessor<arrayView1d<real64>> pressure2 =
-          elemManager->ConstructViewAccessor<array1d<real64>, arrayView1d<real64>>( elementaryPressure2Name );
-        ElementRegionManager::ElementViewAccessor<arrayView1d<real64>> pressure3 =
-          elemManager->ConstructViewAccessor<array1d<real64>, arrayView1d<real64>>( elementaryPressure3Name );
-        int count =0;
-        std::cout << "@@@@@@@@@@@@@@@" << std::endl;
-        std::cout << pressure3[0].size() << std::endl;
-        for(int i = 0; i < pressure3[0][0].size(); i++)
-        {
-          std::cout << pressure3[0][0][i] <<std::endl;
-        }
-        std::cout << "@@@@@@@@@@@@@@@" << std::endl;
-        aggregateElement->forGlobalFineCellsInAggregate( aggregateNumber1,
-                                                   [&] ( globalIndex fineCellIndexGlobal )
-        {
-          localIndex fineCellIndex = elemRegion->GetSubRegion(cell1.subRegion)->m_globalToLocalMap.at(fineCellIndexGlobal);
-          A(count,0) = pressure1[cell1.region][cell1.subRegion][fineCellIndex];
-          A(count,1) = pressure2[cell1.region][cell1.subRegion][fineCellIndex];
-          A(count,2) = pressure3[cell1.region][cell1.subRegion][fineCellIndex];
-          A(count,3) = 1.;
- std::cout<< "fine cell index : " << fineCellIndex << " "  <<pressure1[cell1.region][cell1.subRegion][fineCellIndex] << " " 
-          << pressure2[cell1.region][cell1.subRegion][fineCellIndex] << " "
-          << pressure3[cell1.region][cell1.subRegion][fineCellIndex] << std::endl;
-          GEOS_ERROR_IF(fineCellIndex >= elemRegion->GetSubRegion(cell1.subRegion)->size(),"error");
-          R1Tensor barycenterFineCell = elemRegion->GetSubRegion(cell1.subRegion)->getElementCenter()[fineCellIndex];
-          //std::cout << "fine cell center : " <<  barycenterFineCell << std::endl;
-          pTarget(count++) = barycenterFineCell[0]*barycenter1[0]
-                             + barycenterFineCell[1]*barycenter1[1]
-                             + barycenterFineCell[2]*barycenter1[2];
-        });
-        aggregateElement->forGlobalFineCellsInAggregate( aggregateNumber2,
-                                                   [&] ( globalIndex fineCellIndexGlobal )
-        {
-          localIndex fineCellIndex = elemRegion->GetSubRegion(cell2.subRegion)->m_globalToLocalMap.at(fineCellIndexGlobal);
-          A(count,0) = pressure1[cell2.region][cell2.subRegion][fineCellIndex];
-          A(count,1) = pressure2[cell2.region][cell2.subRegion][fineCellIndex];
-          A(count,2) = pressure3[cell2.region][cell2.subRegion][fineCellIndex];
-          A(count,3) = 1.;
- std::cout<< "fine cell index : " << fineCellIndex << " "  <<pressure1[cell2.region][cell2.subRegion][fineCellIndex] << " " 
-          << pressure2[cell2.region][cell2.subRegion][fineCellIndex] << " "
-          << pressure3[cell2.region][cell2.subRegion][fineCellIndex] << std::endl;
-          R1Tensor barycenterFineCell = elemRegion->GetSubRegion(cell2.subRegion)->getElementCenter()[fineCellIndex];
-          //std::cout << "fine cell center : " <<  barycenterFineCell << std::endl;
-          pTarget(count++) = barycenterFineCell[0]*barycenter1[0]
-                             + barycenterFineCell[1]*barycenter1[1]
-                             + barycenterFineCell[2]*barycenter1[2];
-        });
+      pressureAtTheInterface += pressureEi * volumeEi;
+      volumeOfCellsAtTheInterface += volumeEi;
+      cellToFaceVec = faceCenter;
+      cellToFaceVec -= elemCenter[0][0][ei];
 
-        int info;
-        real64  rwork1;
-        real64 svd[4];
-        int rank;
-        std::cout << "==A==" << std::endl;
-        A.print(std::cout);
-        std::cout << "==b==" << std::endl;
-        pTarget.print(std::cout);
+      if (ke == 1)
+        cellToFaceVec *= -1.0;
 
-        // Solve the least square system
-        lapack.GELSS(systemSize,4,1,A.values(),A.stride(),pTarget.values(),pTarget.stride(),svd,-1,&rank,&rwork1,-1,&info);
-        int lwork = static_cast< int > ( rwork1 );
-        real64 * rwork = new real64[lwork];
-        lapack.GELSS(systemSize,4,1,A.values(),A.stride(),pTarget.values(),pTarget.stride(),svd,-1,&rank,rwork,lwork,&info);
-        std::cout << "==Solution==" << std::endl;
-        pTarget.print(std::cout);
+      real64 const c2fDistance = cellToFaceVec.Normalize();
 
-        // Computation of coarse-grid flow parameters
-        real64 coarseAveragePressure1 = 0.;
-        real64 coarseAveragePressure2 = 0.;
-        array1d<real64> coarseFlowRate(2);
+      makeFullTensor(coefficient[0][0][ei], coefTensor);
 
-        aggregateElement->forGlobalFineCellsInAggregate( aggregateNumber1,
-                                                   [&] ( globalIndex fineCellIndexGlobal )
-        {
-          localIndex fineCellIndex = elemRegion->GetSubRegion(cell1.subRegion)->m_globalToLocalMap.at(fineCellIndexGlobal);
-          coarseAveragePressure1 += ( pTarget[0] * pressure1[cell1.region][cell1.subRegion][fineCellIndex]
-                                   + pTarget[1] * pressure2[cell1.region][cell1.subRegion][fineCellIndex]
-                                   + pTarget[2] * pressure3[cell1.region][cell1.subRegion][fineCellIndex]
-                                   + pTarget[3] )* elemRegion->GetSubRegion(cell1.subRegion)->getElementVolume()[fineCellIndex];
-          std::cout <<"=========================================" << std::endl;
-          std::cout <<  "p target : "<<pTarget[0] << " " << pTarget[1] << " "<< pTarget[2] << " " << pTarget[3]
- << std::endl;
- std::cout<<  "fine pressure : " <<pressure1[cell1.region][cell1.subRegion][fineCellIndex] << " " 
-          << pressure2[cell1.region][cell1.subRegion][fineCellIndex] << " "
-          << pressure3[cell1.region][cell1.subRegion][fineCellIndex] << std::endl;
-          std::cout << "fine volume : "<< elemRegion->GetSubRegion(cell1.subRegion)->getElementVolume()[fineCellIndex] << std::endl;
-          std::cout << "to be summed: " << pTarget[0] * pressure1[cell1.region][cell1.subRegion][fineCellIndex] + pTarget[1] * pressure2[cell1.region][cell1.subRegion][fineCellIndex] + pTarget[2] * pressure3[cell1.region][cell1.subRegion][fineCellIndex] + pTarget[3] << std::endl;
-          std::cout << "cur Coarse pressure " << coarseAveragePressure1 << std::endl;
-
-
-        });
-        aggregateElement->forGlobalFineCellsInAggregate( aggregateNumber2,
-                                                   [&] ( globalIndex fineCellIndexGlobal )
-        {
-          localIndex fineCellIndex = elemRegion->GetSubRegion(cell2.subRegion)->m_globalToLocalMap.at(fineCellIndexGlobal);
-          coarseAveragePressure2 += (pTarget[0] * pressure1[cell2.region][cell2.subRegion][fineCellIndex]
-                                   + pTarget[1] * pressure2[cell2.region][cell2.subRegion][fineCellIndex]
-                                   + pTarget[2] * pressure3[cell2.region][cell2.subRegion][fineCellIndex]
-                                   + pTarget[3] )* elemRegion->GetSubRegion(cell2.subRegion)->getElementVolume()[fineCellIndex];
-        });
-
-        std::cout << "coarse average pressure1 " << coarseAveragePressure1 << std::endl;
-        std::cout << "coarse average pressure2 " << coarseAveragePressure2 << std::endl;
-        coarseAveragePressure1 /= aggregateElement->getElementVolume()[aggregateNumber1];
-        coarseAveragePressure2 /= aggregateElement->getElementVolume()[aggregateNumber2];
-        std::cout << "coarse average pressure1 " << coarseAveragePressure1 << std::endl;
-        std::cout << "coarse average pressure2 " << coarseAveragePressure2 << std::endl;
-
-        fineStencil.forAll( [&] ( StencilCollection<CellDescriptor, real64>::Accessor stencilBis )
-        {
-          localIndex const stencilSizeBis = stencilBis.size();
-          if( stencilBis.size() == 2)
-          {
-            CellDescriptor const & cell1Bis = stencilBis.connectedIndex(0);
-            CellDescriptor const & cell2Bis = stencilBis.connectedIndex(1);
-            localIndex aggregateNumber1Bis = aggregateElement->m_globalToLocalMap.at(aggregateGlobalIndex[cell1Bis.region][cell1Bis.subRegion][cell1Bis.index]);
-            localIndex aggregateNumber2Bis = aggregateElement->m_globalToLocalMap.at(aggregateGlobalIndex[cell2Bis.region][cell2Bis.subRegion][cell2Bis.index]);
-            if( aggregateNumber1Bis == aggregateNumber1 &&
-                aggregateNumber2Bis == aggregateNumber2 ) // TODO clever way to find the interfaces of adjacent fine cells within aggregates?
-            {
-              real64 finePressure1 =   pTarget[0] * pressure1[cell1.region][cell1.subRegion][cell1Bis.index]
-                                     + pTarget[1] * pressure2[cell1.region][cell1.subRegion][cell1Bis.index]
-                                     + pTarget[2] * pressure3[cell1.region][cell1.subRegion][cell1Bis.index]
-                                     + pTarget[3];
-
-              real64 finePressure2 =   pTarget[0] * pressure1[cell2.region][cell2.subRegion][cell2Bis.index]
-                                     + pTarget[1] * pressure2[cell2.region][cell2.subRegion][cell2Bis.index]
-                                     + pTarget[2] * pressure3[cell2.region][cell2.subRegion][cell2Bis.index]
-                                     + pTarget[3];
-              stencilBis.forAll([&] (CellDescriptor const & cell, real64 w, localIndex const i) -> void
-              {
-                  coarseFlowRate[i] += w * ( finePressure1 - finePressure2 ); //TODO sign ?
-              });
-            }
-          }
-        });
-        for( localIndex i = 0; i < 2; i++ )
-        {
-          stencilWeights[i] = std::fabs(coarseFlowRate[i] / ( coarseAveragePressure1 - coarseAveragePressure2 )) * std::pow(-1,i) ; // TODO sign ?
-        //  stencilWeights[i] = 1e-13* std::pow(-1,i) ; // TODO sign ?
-          //std::cout << "trans : " <<  stencilWeights[i] << std::endl;
-        }
-        coarseStencil.add(stencilCells.data(), stencilCells, stencilWeights, 0.);
-        interfaces.insert(std::make_pair(aggregateNumber1, aggregateNumber2));
-        interfaces.insert(std::make_pair(aggregateNumber2, aggregateNumber1));
-      }
-      else if( aggregateElement->GhostRank()[aggregateNumber2] >=0 )
-      {
-        GEOS_LOG_RANK(aggregateNumber1 << " number 2 is ghost");
-        stencilCells[0] = { cell1.region, 1, aggregateNumber1 }; // We can consider here that there is only 1 subregion
-        stencilCells[1] = { cell2.region, 1, aggregateNumber2 };
-
-        // Now we compute the transmissibilities
-        R1Tensor barycenter1 = aggregateElement->getElementCenter()[aggregateNumber1];
-        R1Tensor barycenter2 = aggregateElement->getElementCenter()[aggregateNumber2];
-        std::cout << "======================================"<< std::endl;
-        std::cout << "aggregateNumber1 : " << aggregateNumber1 << std::endl;
-        std::cout << "aggregateNumber2 : " << aggregateNumber2 << std::endl;
-        std::cout << "barycenter1 : " << barycenter1 << std::endl;
-        std::cout << "barycenter2 : " << barycenter2 << std::endl;
-        barycenter1 -= barycenter2; // normal between the two aggregates
-        barycenter1.Normalize();
-        //std::cout << "vector between the two aggregates : " << barycenter1 << std::endl;
-
-        int systemSize = integer_conversion< int >(aggregateElement->GetNbCellsPerAggregate( aggregateNumber1 )
-                                                 + aggregateElement->GetNbCellsPerAggregate( aggregateNumber2 ));
-        Teuchos::LAPACK< int, real64 > lapack;
-        Teuchos::SerialDenseMatrix< int, real64 > A(systemSize, 4);
-        Teuchos::SerialDenseVector< int, real64 > pTarget(systemSize);
-
-        /// Get the elementary pressures
-        ElementRegionManager::ElementViewAccessor<arrayView1d<real64>> pressure1 =
-          elemManager->ConstructViewAccessor<array1d<real64>, arrayView1d<real64>>( elementaryPressure1Name );
-        ElementRegionManager::ElementViewAccessor<arrayView1d<real64>> pressure2 =
-          elemManager->ConstructViewAccessor<array1d<real64>, arrayView1d<real64>>( elementaryPressure2Name );
-        ElementRegionManager::ElementViewAccessor<arrayView1d<real64>> pressure3 =
-          elemManager->ConstructViewAccessor<array1d<real64>, arrayView1d<real64>>( elementaryPressure3Name );
-        int count =0;
-        std::cout << "@@@@@@@@@@@@@@@" << std::endl;
-        std::cout << pressure3[0].size() << std::endl;
-        for(int i = 0; i < pressure3[0][0].size(); i++)
-        {
-          std::cout << pressure3[0][0][i] <<std::endl;
-        }
-        std::cout << "@@@@@@@@@@@@@@@" << std::endl;
-        aggregateElement->forGlobalFineCellsInAggregate( aggregateNumber1,
-                                                   [&] ( globalIndex fineCellIndexGlobal )
-        {
-          localIndex fineCellIndex = elemRegion->GetSubRegion(cell1.subRegion)->m_globalToLocalMap.at(fineCellIndexGlobal);
-          A(count,0) = pressure1[cell1.region][cell1.subRegion][fineCellIndex];
-          A(count,1) = pressure2[cell1.region][cell1.subRegion][fineCellIndex];
-          A(count,2) = pressure3[cell1.region][cell1.subRegion][fineCellIndex];
-          A(count,3) = 1.;
- std::cout<< "fine cell index : " << fineCellIndex << " "  <<pressure1[cell1.region][cell1.subRegion][fineCellIndex] << " " 
-          << pressure2[cell1.region][cell1.subRegion][fineCellIndex] << " "
-          << pressure3[cell1.region][cell1.subRegion][fineCellIndex] << std::endl;
-          GEOS_ERROR_IF(fineCellIndex >= elemRegion->GetSubRegion(cell1.subRegion)->size(),"error");
-          R1Tensor barycenterFineCell = elemRegion->GetSubRegion(cell1.subRegion)->getElementCenter()[fineCellIndex];
-          //std::cout << "fine cell center : " <<  barycenterFineCell << std::endl;
-          pTarget(count++) = barycenterFineCell[0]*barycenter1[0]
-                             + barycenterFineCell[1]*barycenter1[1]
-                             + barycenterFineCell[2]*barycenter1[2];
-        });
-        aggregateElement->forGlobalFineCellsInAggregate( aggregateNumber2,
-                                                   [&] ( globalIndex fineCellIndexGlobal )
-        {
-          localIndex fineCellIndex = elemRegion->GetSubRegion(cell2.subRegion)->m_globalToLocalMap.at(fineCellIndexGlobal);
-            GEOS_LOG_RANK("map size "<< elemRegion->GetSubRegion(cell2.subRegion)->m_globalToLocalMap.size());
-            GEOS_LOG_RANK("map size "<< elemRegion->GetSubRegion(cell2.subRegion)->m_globalToLocalMap.size());
-          if(  elemRegion->GetSubRegion(cell2.subRegion)->GhostRank()[fineCellIndex] >=0)
-          {
-            GEOS_LOG_RANK(fineCellIndex << " is a ghost cell ");
-            GEOS_LOG_RANK("map size "<< elemRegion->GetSubRegion(cell2.subRegion)->m_globalToLocalMap.size());
-          }
-          else
-          {
-            GEOS_LOG_RANK(fineCellIndex << " is NOT a ghost cell ");
-          }
-          A(count,0) = pressure1[cell2.region][cell2.subRegion][fineCellIndex];
-          A(count,1) = pressure2[cell2.region][cell2.subRegion][fineCellIndex];
-          A(count,2) = pressure3[cell2.region][cell2.subRegion][fineCellIndex];
-          A(count,3) = 1.;
- std::cout<< "fine cell index : " << fineCellIndex << " "  <<pressure1[cell2.region][cell2.subRegion][fineCellIndex] << " " 
-          << pressure2[cell2.region][cell2.subRegion][fineCellIndex] << " "
-          << pressure3[cell2.region][cell2.subRegion][fineCellIndex] << std::endl;
-          R1Tensor barycenterFineCell = elemRegion->GetSubRegion(cell2.subRegion)->getElementCenter()[fineCellIndex];
-          //std::cout << "fine cell center : " <<  barycenterFineCell << std::endl;
-          pTarget(count++) = barycenterFineCell[0]*barycenter1[0]
-                             + barycenterFineCell[1]*barycenter1[1]
-                             + barycenterFineCell[2]*barycenter1[2];
-        });
-
-        int info;
-        real64  rwork1;
-        real64 svd[4];
-        int rank;
-        std::cout << "==A==" << std::endl;
-        A.print(std::cout);
-        std::cout << "==b==" << std::endl;
-        pTarget.print(std::cout);
-
-        // Solve the least square system
-        lapack.GELSS(systemSize,4,1,A.values(),A.stride(),pTarget.values(),pTarget.stride(),svd,-1,&rank,&rwork1,-1,&info);
-        int lwork = static_cast< int > ( rwork1 );
-        real64 * rwork = new real64[lwork];
-        lapack.GELSS(systemSize,4,1,A.values(),A.stride(),pTarget.values(),pTarget.stride(),svd,-1,&rank,rwork,lwork,&info);
-        std::cout << "==Solution==" << std::endl;
-        pTarget.print(std::cout);
-
-        // Computation of coarse-grid flow parameters
-        real64 coarseAveragePressure1 = 0.;
-        real64 coarseAveragePressure2 = 0.;
-        array1d<real64> coarseFlowRate(2);
-
-        aggregateElement->forGlobalFineCellsInAggregate( aggregateNumber1,
-                                                   [&] ( globalIndex fineCellIndexGlobal )
-        {
-          localIndex fineCellIndex = elemRegion->GetSubRegion(cell1.subRegion)->m_globalToLocalMap.at(fineCellIndexGlobal);
-          coarseAveragePressure1 += ( pTarget[0] * pressure1[cell1.region][cell1.subRegion][fineCellIndex]
-                                   + pTarget[1] * pressure2[cell1.region][cell1.subRegion][fineCellIndex]
-                                   + pTarget[2] * pressure3[cell1.region][cell1.subRegion][fineCellIndex]
-                                   + pTarget[3] )* elemRegion->GetSubRegion(cell1.subRegion)->getElementVolume()[fineCellIndex];
-          std::cout <<"=========================================" << std::endl;
-          std::cout <<  "p target : "<<pTarget[0] << " " << pTarget[1] << " "<< pTarget[2] << " " << pTarget[3]
- << std::endl;
- std::cout<<  "fine pressure : " <<pressure1[cell1.region][cell1.subRegion][fineCellIndex] << " " 
-          << pressure2[cell1.region][cell1.subRegion][fineCellIndex] << " "
-          << pressure3[cell1.region][cell1.subRegion][fineCellIndex] << std::endl;
-          std::cout << "fine volume : "<< elemRegion->GetSubRegion(cell1.subRegion)->getElementVolume()[fineCellIndex] << std::endl;
-          std::cout << "to be summed: " << pTarget[0] * pressure1[cell1.region][cell1.subRegion][fineCellIndex] + pTarget[1] * pressure2[cell1.region][cell1.subRegion][fineCellIndex] + pTarget[2] * pressure3[cell1.region][cell1.subRegion][fineCellIndex] + pTarget[3] << std::endl;
-          std::cout << "cur Coarse pressure " << coarseAveragePressure1 << std::endl;
-
-
-        });
-        aggregateElement->forGlobalFineCellsInAggregate( aggregateNumber2,
-                                                   [&] ( globalIndex fineCellIndexGlobal )
-        {
-          localIndex fineCellIndex = elemRegion->GetSubRegion(cell2.subRegion)->m_globalToLocalMap.at(fineCellIndexGlobal);
-          coarseAveragePressure2 += (pTarget[0] * pressure1[cell2.region][cell2.subRegion][fineCellIndex]
-                                   + pTarget[1] * pressure2[cell2.region][cell2.subRegion][fineCellIndex]
-                                   + pTarget[2] * pressure3[cell2.region][cell2.subRegion][fineCellIndex]
-                                   + pTarget[3] )* elemRegion->GetSubRegion(cell2.subRegion)->getElementVolume()[fineCellIndex];
-        });
-
-        std::cout << "coarse average pressure1 " << coarseAveragePressure1 << std::endl;
-        std::cout << "coarse average pressure2 " << coarseAveragePressure2 << std::endl;
-        coarseAveragePressure1 /= aggregateElement->getElementVolume()[aggregateNumber1];
-        coarseAveragePressure2 /= aggregateElement->getElementVolume()[aggregateNumber2];
-        std::cout << "coarse average pressure1 " << coarseAveragePressure1 << std::endl;
-        std::cout << "coarse average pressure2 " << coarseAveragePressure2 << std::endl;
-
-        fineStencil.forAll( [&] ( StencilCollection<CellDescriptor, real64>::Accessor stencilBis )
-        {
-          localIndex const stencilSizeBis = stencilBis.size();
-          if( stencilBis.size() == 2)
-          {
-            CellDescriptor const & cell1Bis = stencilBis.connectedIndex(0);
-            CellDescriptor const & cell2Bis = stencilBis.connectedIndex(1);
-            localIndex aggregateNumber1Bis = aggregateElement->m_globalToLocalMap.at(aggregateGlobalIndex[cell1Bis.region][cell1Bis.subRegion][cell1Bis.index]);
-            localIndex aggregateNumber2Bis = aggregateElement->m_globalToLocalMap.at(aggregateGlobalIndex[cell2Bis.region][cell2Bis.subRegion][cell2Bis.index]);
-            if( aggregateNumber1Bis == aggregateNumber1 &&
-                aggregateNumber2Bis == aggregateNumber2 ) // TODO clever way to find the interfaces of adjacent fine cells within aggregates?
-            {
-              real64 finePressure1 =   pTarget[0] * pressure1[cell1.region][cell1.subRegion][cell1Bis.index]
-                                     + pTarget[1] * pressure2[cell1.region][cell1.subRegion][cell1Bis.index]
-                                     + pTarget[2] * pressure3[cell1.region][cell1.subRegion][cell1Bis.index]
-                                     + pTarget[3];
-
-              real64 finePressure2 =   pTarget[0] * pressure1[cell2.region][cell2.subRegion][cell2Bis.index]
-                                     + pTarget[1] * pressure2[cell2.region][cell2.subRegion][cell2Bis.index]
-                                     + pTarget[2] * pressure3[cell2.region][cell2.subRegion][cell2Bis.index]
-                                     + pTarget[3];
-              stencilBis.forAll([&] (CellDescriptor const & cell, real64 w, localIndex const i) -> void
-              {
-                  coarseFlowRate[i] += w * ( finePressure1 - finePressure2 ); //TODO sign ?
-              });
-            }
-          }
-        });
-        for( localIndex i = 0; i < 2; i++ )
-        {
-          stencilWeights[i] = std::fabs(coarseFlowRate[i] / ( coarseAveragePressure1 - coarseAveragePressure2 )) * std::pow(-1,i) ; // TODO sign ?
-        //  stencilWeights[i] = 1e-13* std::pow(-1,i) ; // TODO sign ?
-          //std::cout << "trans : " <<  stencilWeights[i] << std::endl;
-        }
-        coarseStencil.add(stencilCells.data(), stencilCells, stencilWeights, 0.);
-        interfaces.insert(std::make_pair(aggregateNumber1, aggregateNumber2));
-        interfaces.insert(std::make_pair(aggregateNumber2, aggregateNumber1));
-      }
-      else if( aggregateElement->GhostRank()[aggregateNumber1] >=0 )
-      {
-        GEOS_LOG_RANK(aggregateNumber2 << " number 1 is ghost");
-        GEOS_ERROR_IF(true, "Should be never reach " << aggregateElement->GhostRank()[aggregateNumber1] << " " << aggregateElement->GhostRank()[aggregateNumber2]);
-      }
-      else
-      {
-        GEOS_ERROR_IF(true, "Should be never reach " << aggregateElement->GhostRank()[aggregateNumber1] << " " << aggregateElement->GhostRank()[aggregateNumber2]);
-      }
-      }
+      faceConormal.AijBj(coefTensor, faceNormal);
+      real64 const ht = Dot(cellToFaceVec, faceConormal) * faceArea / c2fDistance;
+      faceWeightInv += 1.0 / ht; // XXX: safeguard against div by zero?
     }
-});
-*/
+    faceWeight = 1.0 / faceWeightInv; // XXX: safeguard against div by zero?
 
-//GEOS_ERROR_IF(true,"error");
+    // ensure consistent normal orientation
+    if (Dot(cellToFaceVec, faceNormal) < 0)
+      faceWeight *= -1;
+    for( localIndex ke = 0; ke < 2 ; ke++)
+    {
+      localIndex const ei  = elemList[kf][ke];
+
+      real64 pressureEi = pTarget[0] * pressure1[0][0][ei]
+        + pTarget[1] * pressure2[0][0][ei]
+        + pTarget[2] * pressure3[0][0][ei]
+        + pTarget[3];
+      coarseFlowRate += faceWeight * std::pow(-1,ke) *  pressureEi;
+    }
+  }
+  pressureAtTheInterface /= volumeOfCellsAtTheInterface;
+  real64 coarseHalfTransmissibility = std::fabs( coarseFlowRate / ( coarseAveragePressure - pressureAtTheInterface) );
+  halfTrans[0][1][aggregate0.aggregateLocalIndex][aggregate1.aggregateGlobalIndex]=coarseHalfTransmissibility;
+  //aggregateElement->getReference<array2d<real64>>(ElementSubRegionBase::viewKeyStruct::halfTransmissibilitiesString).rei
+  //halfTransMaps[0][1][aggregate0.aggregateGlobalIndex][aggregate1.aggregateGlobalIndex]= coarseHalfTransmissibility;
 }
 
 
