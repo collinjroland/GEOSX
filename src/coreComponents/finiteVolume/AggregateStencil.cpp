@@ -90,8 +90,11 @@ void AggregateStencil::Execute( real64 const time_n,
         aggregateRegion->forGlobalFineCellsInAggregate( aggregateIndex,
                                                   [&] ( globalIndex fineCellIndexGlobal )
         {
+          if( aggregateIndex < aggregateRegion->GetNumberOfLocalIndices() )
+          {
           localIndex fineCellIndex = elemManager->GetRegion(0)->GetSubRegion(0)->m_globalToLocalMap.at(fineCellIndexGlobal);
           porosity[0][1][aggregateIndex] += porosity[0][0][fineCellIndex] * elementSubRegionVolumes[fineCellIndex];
+          }
         });
         porosity[0][1][aggregateIndex] /= aggregateVolumes[aggregateIndex];
     }

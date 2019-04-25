@@ -23,6 +23,8 @@
 
 #include "mesh/MeshBody.hpp"
 
+#include "MPI_Communications/NeighborCommunicator.hpp"
+#include "MPI_Communications/CommunicationTools.hpp"
 #include "managers/NumericalMethodsManager.hpp"
 #include "finiteElement/FiniteElementDiscretizationManager.hpp"
 #include "finiteElement/ElementLibrary/FiniteElement.h"
@@ -86,6 +88,7 @@ void FieldSpecificationManager::ApplyInitialConditions( ManagedGroup * domain ) 
 void FieldSpecificationManager::ApplyInitialConditionsFromMesh( dataRepository::ManagedGroup * domain,
                                                                 MeshManager * meshManager) const
 {
+  std::map<string, string_array > fieldNames;
   ApplyFromMesh( 0.0, domain, "", "", meshManager,
          [&]( FieldSpecificationBase const * const bc,
          string const &,
@@ -95,7 +98,14 @@ void FieldSpecificationManager::ApplyInitialConditionsFromMesh( dataRepository::
          const real64_array& fieldArray)
     {
       bc->ApplyFieldValue<FieldSpecificationEqual>( targetSet, 0.0, targetGroup, fieldName, fieldArray );
+  fieldNames["elems"].push_back( fieldName );
     } );
+
+  array1d<NeighborCommunicator> & comms =
+    domain->group_cast<DomainPartition*>()->getReference< array1d<NeighborCommunicator>>( domain->group_cast<DomainPartition*>()->viewKeys.neighbors );
+
+  // We synchronize the half transmissibilities
+  CommunicationTools::SynchronizeFields( fieldNames, domain->group_cast<DomainPartition*>()->getMeshBody(0)->getMeshLevel(0), comms );
 }
 
 } /* namespace geosx */

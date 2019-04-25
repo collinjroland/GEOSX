@@ -590,134 +590,6 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
       aggregate1 = aggregateCouple.aggregate1;
     }
 
-    /*
-    R1Tensor aggregateCenter0 = aggregateElement->getElementCenter()[aggregate0.aggregateLocalIndex];
-    R1Tensor aggregateCenter1 = aggregateElement->getElementCenter()[aggregate1.aggregateLocalIndex];
-
-    real64 aggregateVolume0 = aggregateElement->getElementVolume()[aggregate0.aggregateLocalIndex];
-    real64 aggregateVolume1 = aggregateElement->getElementVolume()[aggregate1.aggregateLocalIndex];
-
-    R1Tensor agg0toAgg1Direction = aggregateCenter0;
-    agg0toAgg1Direction -= aggregateCenter1;
-    agg0toAgg1Direction.Normalize();
-
-    // We compute half transmssibility aggregate 0 --- > aggregate 1
-    
-    // Least square system on the fine cells of the aggregate0
-    int systemSize = integer_conversion< int >( aggregateElement->GetNbCellsPerAggregate( aggregate0.aggregateLocalIndex ) 
-                                              + aggregate1.cellBoundInterface.size());
-    Teuchos::LAPACK< int, real64 > lapack;
-    Teuchos::SerialDenseMatrix< int, real64 > A(systemSize, 4);
-    Teuchos::SerialDenseVector< int, real64 > pTarget(systemSize);
-
-    int count = 0;
-    aggregateElement->forGlobalFineCellsInAggregate( aggregate0.aggregateLocalIndex,
-      [&] ( globalIndex fineCellIndexGlobal )
-    {
-      localIndex fineCellIndex = elemRegion->GetSubRegion(0)->m_globalToLocalMap.at(fineCellIndexGlobal); //TODO hardcoded
-      A(count,0) = pressure1[0][0][fineCellIndex];
-      A(count,1) = pressure2[0][0][fineCellIndex];
-      A(count,2) = pressure3[0][0][fineCellIndex];
-      A(count,3) = 1.;
-
-      R1Tensor barycenterFineCell = elemRegion->GetSubRegion(aggregate0.esr)->getElementCenter()[fineCellIndex];
-      pTarget(count++) = barycenterFineCell[0]*agg0toAgg1Direction[0]
-                       + barycenterFineCell[1]*agg0toAgg1Direction[1]
-                       + barycenterFineCell[2]*agg0toAgg1Direction[2];
-    });
-    for( localIndex cellInOtherSide : aggregate1.cellBoundInterface )
-    {
-      A(count,0) = pressure1[0][0][cellInOtherSide];
-      A(count,1) = pressure2[0][0][cellInOtherSide];
-      A(count,2) = pressure3[0][0][cellInOtherSide];
-      A(count,3) = 1.;
-
-      R1Tensor barycenterFineCell = elemRegion->GetSubRegion(0)->getElementCenter()[cellInOtherSide];
-      pTarget(count++) = barycenterFineCell[0]*agg0toAgg1Direction[0]
-                       + barycenterFineCell[1]*agg0toAgg1Direction[1]
-                       + barycenterFineCell[2]*agg0toAgg1Direction[2];
-    }
-    
-    // Solve the least square system
-    int info;
-    real64  rwork1;
-    real64 svd[4];
-    int rank;
-    lapack.GELSS(systemSize,4,1,A.values(),A.stride(),pTarget.values(),pTarget.stride(),svd,-1,&rank,&rwork1,-1,&info);
-    int lwork = static_cast< int > ( rwork1 );
-    real64 * rwork = new real64[lwork];
-    lapack.GELSS(systemSize,4,1,A.values(),A.stride(),pTarget.values(),pTarget.stride(),svd,-1,&rank,rwork,lwork,&info);
-
-    // Compute the coarseAveragePressure in aggregate 0
-    real64 coarseAveragePressure = 0.;
-    aggregateElement->forGlobalFineCellsInAggregate( aggregate0.aggregateLocalIndex,
-                                               [&] ( globalIndex fineCellIndexGlobal )
-    {
-      localIndex fineCellIndex = elemRegion->GetSubRegion(0)->m_globalToLocalMap.at(fineCellIndexGlobal); //TODO hardcoded
-      coarseAveragePressure += ( pTarget[0] * pressure1[0][0][fineCellIndex]
-                               + pTarget[1] * pressure2[0][0][fineCellIndex]
-                               + pTarget[2] * pressure3[0][0][fineCellIndex]
-                               + pTarget[3] )* elemRegion->GetSubRegion(0)->getElementVolume()[fineCellIndex];
-    });
-    coarseAveragePressure /= aggregateVolume0;
-
-    // Compute the Pressure at the interface
-    real64 pressureAtTheInterface = 0.;
-    real64 volumeOfCellsAtTheInterface = 0;
-
-    // Compute the coarse flow rate and the pressure at the interfaces
-    real64 coarseFlowRate = 0.;
-    for( localIndex kf : aggregateCouple.faceIndicies )
-    {
-      faceArea = computationalGeometry::Centroid_3DPolygon( faceToNodes[kf], X, faceCenter, faceNormal, areaTolerance );
-      faceWeightInv = 0.0;
-      for( localIndex ke = 0; ke < 2 ; ke++)
-      {
-        localIndex const ei  = elemList[kf][ke];
-
-        real64 pressureEi = pTarget[0] * pressure1[0][0][ei]
-                          + pTarget[1] * pressure2[0][0][ei]
-                          + pTarget[2] * pressure3[0][0][ei]
-                          + pTarget[3];
-
-        real64 volumeEi = elemRegion->GetSubRegion(0)->getElementVolume()[ei];
-
-        pressureAtTheInterface += pressureEi * volumeEi;
-        volumeOfCellsAtTheInterface += volumeEi;
-        cellToFaceVec = faceCenter;
-        cellToFaceVec -= elemCenter[0][0][ei];
-
-        if (ke == 1)
-          cellToFaceVec *= -1.0;
-
-        real64 const c2fDistance = cellToFaceVec.Normalize();
-
-        makeFullTensor(coefficient[0][0][ei], coefTensor);
-
-        faceConormal.AijBj(coefTensor, faceNormal);
-        real64 const ht = Dot(cellToFaceVec, faceConormal) * faceArea / c2fDistance;
-        faceWeightInv += 1.0 / ht; // XXX: safeguard against div by zero?
-      }
-      faceWeight = 1.0 / faceWeightInv; // XXX: safeguard against div by zero?
-
-      // ensure consistent normal orientation
-      if (Dot(cellToFaceVec, faceNormal) < 0)
-        faceWeight *= -1;
-      for( localIndex ke = 0; ke < 2 ; ke++)
-      {
-        localIndex const ei  = elemList[kf][ke];
-
-        real64 pressureEi = pTarget[0] * pressure1[0][0][ei]
-                          + pTarget[1] * pressure2[0][0][ei]
-                          + pTarget[2] * pressure3[0][0][ei]
-                          + pTarget[3];
-        coarseFlowRate += faceWeight * std::pow(-1,ke) *  pressureEi;
-      }
-    }
-    pressureAtTheInterface /= volumeOfCellsAtTheInterface;
-    real64 coarseHalfTransmissibility = std::fabs( coarseFlowRate / ( coarseAveragePressure - pressureAtTheInterface) );
-    */
-
     computeCoarseHT(domain, 
                    elementaryPressure1Name,
                    elementaryPressure2Name,
@@ -735,15 +607,6 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
                      aggregate1,
                      aggregate0);
     }
-    // We then check if the couple of aggregates is not a relation ghost <---> owned with rank(ghost) < rank(owned).
-    /*
-    if( aggregateCouple.aggregate0.ghostRank >= 0  && mpiRank > aggregateCouple.aggregate0.ghostRank )
-      continue;
-
-    if( aggregateCouple.aggregate1.ghostRank >= 0  && mpiRank > aggregateCouple.aggregate1.ghostRank )
-      continue;
-      */
-
   }
   std::map<string, string_array > fieldNames;
   fieldNames["elems"].push_back( ElementSubRegionBase::viewKeyStruct::halfTransmissibilitiesString );
@@ -751,19 +614,28 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
   array1d<NeighborCommunicator> & comms =
     domain->getReference< array1d<NeighborCommunicator>>( domain->viewKeys.neighbors );
 
-  GEOS_LOG_RANK_0("BEFORE ");
-
-  for(int i = 0; i < halfTrans[0][1].size(); i++)
-  {
-    GEOS_LOG_RANK_0(halfTrans[0][1][i].size());
-  }
+  // We synchronize the half transmissibilities
   CommunicationTools::SynchronizeFields( fieldNames, mesh, comms );
-  GEOS_LOG_RANK_0("AFTER");
-  for(int i = 0; i < halfTrans[0][1].size(); i++)
+  // Now we can build the coarse stencil !!!!!
+  for(auto & aggregateCouple : adjacentAggregates)
   {
-    GEOS_LOG_RANK_0(halfTrans[0][1][i].size());
+    // We then check if the couple of aggregates is not a relation ghost <---> owned with rank(ghost) < rank(owned).
+    if( aggregateCouple.aggregate0.ghostRank >= 0  && mpiRank > aggregateCouple.aggregate0.ghostRank )
+      continue;
+
+    if( aggregateCouple.aggregate1.ghostRank >= 0  && mpiRank > aggregateCouple.aggregate1.ghostRank )
+      continue;
+
+    real64 ht0 = halfTrans[0][1][aggregateCouple.aggregate1.aggregateLocalIndex][aggregateCouple.aggregate0.aggregateGlobalIndex];
+    real64 ht1 = halfTrans[0][1][aggregateCouple.aggregate0.aggregateLocalIndex][aggregateCouple.aggregate1.aggregateGlobalIndex];
+    real64 transmissibility = (ht0*ht1)/(ht0 + ht1);
+
+    stencilCells[0] = { 0, 1, aggregateCouple.aggregate0.aggregateLocalIndex};
+    stencilCells[1] = { 0, 1, aggregateCouple.aggregate1.aggregateLocalIndex};
+    stencilWeights[0] = transmissibility;
+    stencilWeights[1] = -transmissibility;
+    coarseStencil.add(stencilCells.data(), stencilCells, stencilWeights, 0.);
   }
-  GEOS_ERROR_IF(true, " " << adjacentAggregates.size());
 }
 
 void TwoPointFluxApproximation::computeCoarseHT( DomainPartition * domain,
@@ -825,6 +697,8 @@ void TwoPointFluxApproximation::computeCoarseHT( DomainPartition * domain,
   // Least square system on the fine cells of the aggregate0
   int systemSize = integer_conversion< int >( aggregateElement->GetNbCellsPerAggregate( aggregate0.aggregateLocalIndex ) 
       + aggregate1.cellBoundInterface.size());
+  GEOS_LOG_RANK("nb cells by agg "<< aggregateElement->GetNbCellsPerAggregate( aggregate0.aggregateLocalIndex ) );
+  GEOS_LOG_RANK("nb cells bound "<<aggregate1.cellBoundInterface.size()  );
   Teuchos::LAPACK< int, real64 > lapack;
   Teuchos::SerialDenseMatrix< int, real64 > A(systemSize, 4);
   Teuchos::SerialDenseVector< int, real64 > pTarget(systemSize);
@@ -856,6 +730,8 @@ void TwoPointFluxApproximation::computeCoarseHT( DomainPartition * domain,
       + barycenterFineCell[1]*agg0toAgg1Direction[1]
       + barycenterFineCell[2]*agg0toAgg1Direction[2];
   }
+  A.print(std::cout);
+  pTarget.print(std::cout);
 
   // Solve the least square system
   int info;
