@@ -420,6 +420,7 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
   NodeManager * const nodeManager = mesh->getNodeManager();
   FaceManager * const faceManager = mesh->getFaceManager();
   ElementRegionManager * const elemManager = mesh->getElemManager();
+  ElementRegion * const elemRegion = elemManager->GetRegion(0); // TODO harcoded;
   AggregateElementSubRegion *  aggregateElement = elemManager->GetRegion(0)->GetSubRegion("coarse")->group_cast< AggregateElementSubRegion * >(); // harcoded
   auto aggregateGlobalIndexes = elemManager->ConstructViewAccessor<array1d<globalIndex>, arrayView1d<globalIndex>>( CellElementSubRegion::viewKeyStruct::aggregateIndexString );
 
@@ -464,7 +465,9 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
     localIndex aggregateLocalIndex;
     globalIndex  aggregateGlobalIndex;
     localIndex ghostRank;
-    array1d< localIndex > fineCellsOnInterface;
+    localIndex er;
+    localIndex esr;
+    array1d< localIndex > cellBoundInterface;
     bool  operator==( const Aggregate & rhs) const
     {
       return aggregateGlobalIndex == rhs.aggregateGlobalIndex;
@@ -479,9 +482,20 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
 
     bool operator==( const AggregateCouple & rhs) const
     {
-      return aggregate0 == rhs.aggregate0 && aggregate1 == rhs.aggregate1;
+      return (aggregate0 == rhs.aggregate0 && aggregate1 == rhs.aggregate1) || (aggregate0 == rhs.aggregate1 && aggregate1 == rhs.aggregate0);
     }
-    
+
+    /*
+    bool GhostOwnedRelation() const
+    {
+      return aggregate0.ghostRank >= 0 || aggregate1.ghostRank >= 0;
+    }
+    */
+
+    bool GhostGhostRelation() const
+    {
+      return aggregate0.ghostRank >= 0 && aggregate1.ghostRank >= 0;
+    }
   };
 
   std::vector< AggregateCouple > adjacentAggregates;
@@ -489,6 +503,7 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
 
   for (localIndex kf = 0; kf < faceManager->size(); ++kf)
   {
+    // Face on boundary ?
     if ( elemRegionList[kf][0] == -1 || elemRegionList[kf][1] == -1)
       continue;
 
@@ -509,12 +524,18 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
     localIndex const esr1 = elemSubRegionList[kf][1];
     localIndex const ei1  = elemList[kf][1];
 
+    // These ghost faces at the domain boundary will NEVER be a boundary of two aggragates within this domain (ghost or owned)
+    if(ei0 == -1 || ei1 == -1)
+      continue;
+
     Aggregate aggregate0;
     Aggregate aggregate1;
 
     aggregate0.aggregateGlobalIndex = aggregateGlobalIndexes[er0][esr0][ei0];
     aggregate1.aggregateGlobalIndex = aggregateGlobalIndexes[er1][esr1][ei1];
-    if ( aggregate0.aggregateGlobalIndex != aggregate1.aggregateGlobalIndex )
+
+    // Theses faces are not an aggregate boundary
+    if ( aggregate0.aggregateGlobalIndex == aggregate1.aggregateGlobalIndex )
       continue;
 
     AggregateCouple coupleToFind;
@@ -531,6 +552,22 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
       // Couple was not added in the vector
       adjacentAggregates.push_back( coupleToFind );
       couple = &adjacentAggregates.back();
+
+      couple->aggregate0.ghostRank = elemManager->GetRegion(er0)
+                                              ->GetSubRegion(esr0)
+                                              ->GhostRank()[ei0];
+      couple->aggregate1.ghostRank = elemManager->GetRegion(er1)
+                                              ->GetSubRegion(esr1)
+                                              ->GhostRank()[ei1];
+
+      couple->aggregate0.aggregateLocalIndex = aggregateElement->m_globalToLocalMap.at(aggregateGlobalIndexes[er0][esr0][ei0]);
+      couple->aggregate1.aggregateLocalIndex = aggregateElement->m_globalToLocalMap.at(aggregateGlobalIndexes[er1][esr1][ei1]);
+
+      couple->aggregate0.er = er0;
+      couple->aggregate1.er = er1;
+
+      couple->aggregate0.esr = esr0;
+      couple->aggregate1.esr = esr1;
     }
     else
     {
@@ -540,25 +577,155 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
 
 
     // Complete the couple
-    couple->aggregate0.fineCellsOnInterface.push_back(ei0);
-    couple->aggregate1.fineCellsOnInterface.push_back(ei1);
-
-    couple->aggregate0.ghostRank = elemManager->GetRegion(er0)
-                                              ->GetSubRegion(esr0)
-                                              ->GhostRank()[ei0];
-    couple->aggregate1.ghostRank = elemManager->GetRegion(er1)
-                                              ->GetSubRegion(esr1)
-                                              ->GhostRank()[ei1];
-
-    couple->aggregate0.aggregateLocalIndex = aggregateElement->m_globalToLocalMap.at(aggregateGlobalIndexes[er0][esr0][ei0]);
-    couple->aggregate1.aggregateLocalIndex = aggregateElement->m_globalToLocalMap.at(aggregateGlobalIndexes[er1][esr1][ei1]);
+    couple->faceIndicies.push_back(kf);
+    couple->aggregate0.cellBoundInterface.push_back(ei0);
+    couple->aggregate1.cellBoundInterface.push_back(ei1);
   }
 
   // Compute the half transmissibilities
+  int mpiSize;
+  int mpiRank;
+  MPI_Comm_size( MPI_COMM_GEOSX, &mpiSize );
+  MPI_Comm_rank( MPI_COMM_GEOSX, &mpiRank );
+  
+  /// Get the elementary pressures
+  ElementRegionManager::ElementViewAccessor<arrayView1d<real64>> pressure1 =
+    elemManager->ConstructViewAccessor<array1d<real64>, arrayView1d<real64>>( elementaryPressure1Name );
+  ElementRegionManager::ElementViewAccessor<arrayView1d<real64>> pressure2 =
+    elemManager->ConstructViewAccessor<array1d<real64>, arrayView1d<real64>>( elementaryPressure2Name );
+  ElementRegionManager::ElementViewAccessor<arrayView1d<real64>> pressure3 =
+    elemManager->ConstructViewAccessor<array1d<real64>, arrayView1d<real64>>( elementaryPressure3Name );
+
   for(auto & aggregateCouple : adjacentAggregates)
   {
+    // We first check if the couple of aggregates is not a relation ghost <---> ghost relation
+    if( aggregateCouple.GhostGhostRelation() )
+      continue;
+
+    Aggregate aggregate0;
+    Aggregate aggregate1;
+
+    // aggregate0 will ALWAY be OWNED
+    if( aggregateCouple.aggregate0.ghostRank >= 0 )
+    {
+      aggregate0 = aggregateCouple.aggregate1;
+      aggregate1 = aggregateCouple.aggregate0;
+    }
+    else if( aggregateCouple.aggregate1.ghostRank >= 0 )
+    {
+      aggregate0 = aggregateCouple.aggregate0;
+      aggregate1 = aggregateCouple.aggregate1;
+    }
+    else
+    {
+      aggregate0 = aggregateCouple.aggregate0;
+      aggregate1 = aggregateCouple.aggregate1;
+    }
+
+    R1Tensor aggregateCenter0 = aggregateElement->getElementCenter()[aggregate0.aggregateLocalIndex];
+    R1Tensor aggregateCenter1 = aggregateElement->getElementCenter()[aggregate1.aggregateLocalIndex];
+
+    real64 aggregateVolume0 = aggregateElement->getElementVolume()[aggregate0.aggregateLocalIndex];
+    real64 aggregateVolume1 = aggregateElement->getElementVolume()[aggregate1.aggregateLocalIndex];
+
+    R1Tensor agg0toAgg1Direction = aggregateCenter0;
+    agg0toAgg1Direction -= aggregateCenter1;
+    agg0toAgg1Direction.Normalize();
+
+    // We compute half transmssibility aggregate 0 --- > aggregate 1
+    
+    // Least square system on the fine cells of the aggregate0
+    int systemSize = integer_conversion< int >( aggregateElement->GetNbCellsPerAggregate( aggregate0.aggregateLocalIndex ) 
+                                              + aggregate1.cellBoundInterface.size());
+    Teuchos::LAPACK< int, real64 > lapack;
+    Teuchos::SerialDenseMatrix< int, real64 > A(systemSize, 4);
+    Teuchos::SerialDenseVector< int, real64 > pTarget(systemSize);
+
+    int count = 0;
+    aggregateElement->forGlobalFineCellsInAggregate( aggregate0.aggregateLocalIndex,
+      [&] ( globalIndex fineCellIndexGlobal )
+    {
+      localIndex fineCellIndex = elemRegion->GetSubRegion(0)->m_globalToLocalMap.at(fineCellIndexGlobal); //TODO hardcoded
+      A(count,0) = pressure1[0][0][fineCellIndex];
+      A(count,1) = pressure2[0][0][fineCellIndex];
+      A(count,2) = pressure3[0][0][fineCellIndex];
+      A(count,3) = 1.;
+
+      R1Tensor barycenterFineCell = elemRegion->GetSubRegion(aggregate0.esr)->getElementCenter()[fineCellIndex];
+      pTarget(count++) = barycenterFineCell[0]*agg0toAgg1Direction[0]
+                       + barycenterFineCell[1]*agg0toAgg1Direction[1]
+                       + barycenterFineCell[2]*agg0toAgg1Direction[2];
+    });
+    for( localIndex cellInOtherSide : aggregate1.cellBoundInterface )
+    {
+      A(count,0) = pressure1[0][0][cellInOtherSide];
+      A(count,1) = pressure2[0][0][cellInOtherSide];
+      A(count,2) = pressure3[0][0][cellInOtherSide];
+      A(count,3) = 1.;
+
+      R1Tensor barycenterFineCell = elemRegion->GetSubRegion(0)->getElementCenter()[cellInOtherSide];
+      pTarget(count++) = barycenterFineCell[0]*agg0toAgg1Direction[0]
+                       + barycenterFineCell[1]*agg0toAgg1Direction[1]
+                       + barycenterFineCell[2]*agg0toAgg1Direction[2];
+    }
+    
+    // Solve the least square system
+    int info;
+    real64  rwork1;
+    real64 svd[4];
+    int rank;
+    lapack.GELSS(systemSize,4,1,A.values(),A.stride(),pTarget.values(),pTarget.stride(),svd,-1,&rank,&rwork1,-1,&info);
+    int lwork = static_cast< int > ( rwork1 );
+    real64 * rwork = new real64[lwork];
+    lapack.GELSS(systemSize,4,1,A.values(),A.stride(),pTarget.values(),pTarget.stride(),svd,-1,&rank,rwork,lwork,&info);
+
+    // Compute the coarseAveragePressure in aggregate 0
+    real64 coarseAveragePressure = 0.;
+    aggregateElement->forGlobalFineCellsInAggregate( aggregate0.aggregateLocalIndex,
+                                               [&] ( globalIndex fineCellIndexGlobal )
+    {
+      localIndex fineCellIndex = elemRegion->GetSubRegion(0)->m_globalToLocalMap.at(fineCellIndexGlobal); //TODO hardcoded
+      coarseAveragePressure += ( pTarget[0] * pressure1[0][0][fineCellIndex]
+                               + pTarget[1] * pressure2[0][0][fineCellIndex]
+                               + pTarget[2] * pressure3[0][0][fineCellIndex]
+                               + pTarget[3] )* elemRegion->GetSubRegion(0)->getElementVolume()[fineCellIndex];
+    });
+    coarseAveragePressure /= aggregateVolume0;
+
+    // Compute the Pressure at the interface
+    real64 pressureAtTheInterface = 0.;
+    real64 volumeOfCellsAtTheInterface = 0;
+    for( localIndex boundEl : aggregate0.cellBoundInterface )
+    {
+      pressureAtTheInterface += ( pTarget[0] * pressure1[0][0][boundEl]
+                                + pTarget[1] * pressure2[0][0][boundEl]
+                                + pTarget[2] * pressure3[0][0][boundEl]
+                                + pTarget[3] )* elemRegion->GetSubRegion(0)->getElementVolume()[boundEl];
+      volumeOfCellsAtTheInterface += elemRegion->GetSubRegion(0)->getElementVolume()[boundEl];
+    }
+    for( localIndex boundEl : aggregate1.cellBoundInterface )
+    {
+      pressureAtTheInterface += ( pTarget[0] * pressure1[0][0][boundEl]
+                                + pTarget[1] * pressure2[0][0][boundEl]
+                                + pTarget[2] * pressure3[0][0][boundEl]
+                                + pTarget[3] )* elemRegion->GetSubRegion(0)->getElementVolume()[boundEl];
+      volumeOfCellsAtTheInterface += elemRegion->GetSubRegion(0)->getElementVolume()[boundEl];
+    }
+    pressureAtTheInterface /= volumeOfCellsAtTheInterface;
+
+    // Compute the coarse flow rate
+
+
+    // We then check if the couple of aggregates is not a relation ghost <---> owned with rank(ghost) < rank(owned).
+    if( aggregateCouple.aggregate0.ghostRank >= 0  && mpiRank > aggregateCouple.aggregate0.ghostRank )
+      continue;
+
+    if( aggregateCouple.aggregate1.ghostRank >= 0  && mpiRank > aggregateCouple.aggregate1.ghostRank )
+      continue;
+
+    count++;
   }
-  GEOS_ERROR_IF(true,adjacentAggregates.size());
+  GEOS_ERROR_IF(true, " " << adjacentAggregates.size());
   /*
   MeshLevel * const mesh = domain->getMeshBodies()->GetGroup<MeshBody>(0)->getMeshLevel(0);
   ElementRegionManager * const elemManager = mesh->getElemManager();
