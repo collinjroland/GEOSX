@@ -626,8 +626,8 @@ void TwoPointFluxApproximation::computeBestCoarsetencil( DomainPartition * domai
     if( aggregateCouple.aggregate1.ghostRank >= 0  && mpiRank > aggregateCouple.aggregate1.ghostRank )
       continue;
 
-    real64 ht0 = halfTrans[0][1][aggregateCouple.aggregate1.aggregateLocalIndex][aggregateCouple.aggregate0.aggregateGlobalIndex];
-    real64 ht1 = halfTrans[0][1][aggregateCouple.aggregate0.aggregateLocalIndex][aggregateCouple.aggregate1.aggregateGlobalIndex];
+    real64 ht0 = halfTrans[0][1][aggregateCouple.aggregate1.aggregateLocalIndex].at(aggregateCouple.aggregate0.aggregateGlobalIndex);
+    real64 ht1 = halfTrans[0][1][aggregateCouple.aggregate0.aggregateLocalIndex].at(aggregateCouple.aggregate1.aggregateGlobalIndex);
     real64 transmissibility = (ht0*ht1)/(ht0 + ht1);
 
     stencilCells[0] = { 0, 1, aggregateCouple.aggregate0.aggregateLocalIndex};
