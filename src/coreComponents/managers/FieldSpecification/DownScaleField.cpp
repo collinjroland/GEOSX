@@ -48,6 +48,7 @@ void DownScaleField::Execute( real64 const time_n,
                          real64 const eventProgress,
                          ManagedGroup * domain )
 {
+      
   DomainPartition * domainCast = domain->group_cast<DomainPartition*>(domain);
   MeshBody * meshBody = domainCast->getMeshBody(0);
   MeshLevel * meshLevel = meshBody->getMeshLevel(0);
@@ -62,6 +63,17 @@ void DownScaleField::Execute( real64 const time_n,
   {
     localIndex aggregateIndex = aggregateRegion->m_globalToLocalMap.at(aggregateIndexSave[fineCellIndex]);
     pressure[0][0][fineCellIndex] = pressure[0][1][aggregateIndex];
+  }
+
+  auto vf =
+    elemManager->ConstructViewAccessor<array2d<real64>, arrayView2d<real64>>( "phaseVolumeFraction" ); //TODO harcoded
+  for( localIndex fineCellIndex  = 0; fineCellIndex < fineRegion->size(); fineCellIndex++)
+  {
+    localIndex aggregateIndex = aggregateRegion->m_globalToLocalMap.at(aggregateIndexSave[fineCellIndex]);
+    for(int i = 0; i <3; i++)
+    {
+      vf[0][0][fineCellIndex][i] = vf[0][1][aggregateIndex][i];
+    }
   }
   /*
   for( localIndex aggregateIndex = 0; aggregateIndex < aggregateRegion->size(); aggregateIndex++ )

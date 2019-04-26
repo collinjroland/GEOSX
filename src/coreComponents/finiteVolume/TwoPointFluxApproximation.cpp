@@ -298,9 +298,6 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
         int rank;
         /*
         std::cout << "==A==" << std::endl;
-        A.print(std::cout);
-        std::cout << "==b==" << std::endl;
-        pTarget.print(std::cout);
         */
 
         // Solve the least square system
@@ -310,7 +307,6 @@ void TwoPointFluxApproximation::computeCoarsetencil( DomainPartition * domain,
         lapack.GELSS(systemSize,4,1,A.values(),A.stride(),pTarget.values(),pTarget.stride(),svd,-1,&rank,rwork,lwork,&info);
         /*
         std::cout << "==Solution==" << std::endl;
-        pTarget.print(std::cout);
         */
 
         // Computation of coarse-grid flow parameters
