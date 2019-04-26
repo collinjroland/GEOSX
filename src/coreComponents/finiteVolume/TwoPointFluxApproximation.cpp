@@ -148,6 +148,7 @@ void TwoPointFluxApproximation::computeCellStencil( DomainPartition const & doma
         real64 const c2fDistance = cellToFaceVec.Normalize();
 
         // assemble full coefficient tensor from principal axis/components
+        /*
         for(int i = 0; i < 3; i++)
         {
           if(coefficient[er][esr][ei][i] < 1e-30)
@@ -156,6 +157,7 @@ void TwoPointFluxApproximation::computeCellStencil( DomainPartition const & doma
             coefficient[er][esr][ei][i] = 1e-15;
           }
         }
+        */
         makeFullTensor(coefficient[er][esr][ei], coefTensor);
 
         faceConormal.AijBj(coefTensor, faceNormal);
@@ -693,8 +695,6 @@ void TwoPointFluxApproximation::computeCoarseHT( DomainPartition * domain,
   // Least square system on the fine cells of the aggregate0
   int systemSize = integer_conversion< int >( aggregateElement->GetNbCellsPerAggregate( aggregate0.aggregateLocalIndex ) 
       + aggregate1.cellBoundInterface.size());
-  GEOS_LOG_RANK("nb cells by agg "<< aggregateElement->GetNbCellsPerAggregate( aggregate0.aggregateLocalIndex ) );
-  GEOS_LOG_RANK("nb cells bound "<<aggregate1.cellBoundInterface.size()  );
   Teuchos::LAPACK< int, real64 > lapack;
   Teuchos::SerialDenseMatrix< int, real64 > A(systemSize, 4);
   Teuchos::SerialDenseVector< int, real64 > pTarget(systemSize);
@@ -726,8 +726,8 @@ void TwoPointFluxApproximation::computeCoarseHT( DomainPartition * domain,
       + barycenterFineCell[1]*agg0toAgg1Direction[1]
       + barycenterFineCell[2]*agg0toAgg1Direction[2];
   }
-  A.print(std::cout);
-  pTarget.print(std::cout);
+  //A.print(std::cout);
+  //pTarget.print(std::cout);
 
   // Solve the least square system
   int info;
