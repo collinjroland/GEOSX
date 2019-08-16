@@ -8,6 +8,7 @@ set(meshUtilities_headers
     MeshGeneratorBase.hpp
     InternalMeshGenerator.hpp
     VTMMeshGenerator.hpp
+    MeshTranslator.hpp
     MeshUtilities.hpp
     SimpleGeometricObjects/GeometricObjectManager.hpp
     SimpleGeometricObjects/SimpleGeometricObjectBase.hpp
