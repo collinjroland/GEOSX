@@ -1007,13 +1007,16 @@ public:
 
   void setInputFlags( InputFlags flags ) { m_input_flags = flags; }
 
-  void prepareToWrite() const;
+  void prepareToWrite();
 
   void finishWriting() const;
 
   void prepareToRead();
 
   void finishReading();
+
+  void postRestartInitializationRecursive( ManagedGroup * const domain );
+
 
 protected:
   /**
@@ -1029,6 +1032,7 @@ protected:
 
   virtual void InitializePostInitialConditions_PostSubGroups( ManagedGroup * const group ) {}
 
+  virtual void postRestartInitialization( ManagedGroup * const domain ) {}
 
 private:
   /**
