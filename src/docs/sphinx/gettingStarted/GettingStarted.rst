@@ -16,27 +16,50 @@ Welcome to GEOSX. In this section, we offer a step-by-step process to install an
 Exact instructions may vary based on individual configurations, but the essential steps should be identical.
 
 
-Checking Prerequisites
+Prerequisites
 =================================
 
-In this section, we check that all external dependencies are installed and prepare to clone a GitHub repository.
+First, we make sure that all external dependencies are installed. The following packages are required. The versions specified are currently supported, they are not necessarily minimal.
 
 
-Minimum Requirements
---------------------
+ * A C++ compiler (gcc >=7, clang, Apple LLVM >= 10.0.1),
+ * A Fortran compiler (GNU Fortran >= 9.1.0) for some components of the third party libraries (TPL),
+ * Git (>= 2.22.0), to clone and track development versions,
+ * Git Lfs (>= 2.7.2), for large files Git support,
+ * CMake (>= 3.14.5), to create cross-platform project files,
+ * MPI such as open-mpi (>= 4.0.1), for parallelization.
 
- * Git (>= 2.22.0)
- * Git Lfs (>= 2.7.2)
- * CMake (>= 3.14.5)
- * MPI such as open-mpi (>= 4.0.1)
- * A C++ compiler (gcc >=7, clang, Apple LLVM >= 10.0.1)
- * A Fortran compiler (GNU Fortran >= 9.1.0) for some TPL components.
+The installation of these packages depends on your configuration.
 
-The installation of these packages depends on your individual configuration. On Linux, the `apt <https://wiki.debian.org/Apt>`__ package manager can be used. For Mac OS, all packages can be installed using `Homebrew <https://docs.brew.sh/Installation>`__.
+On Linux, the `apt <https://wiki.debian.org/Apt>`__ package manager syntax is shown as an example.
 
 .. code-block:: sh
 
   sudo apt install git git-lfs gcc g++ gfortran python cmake zlib1g-dev libblas-dev liblapack-dev libopenmpi-dev
+
+
+For Mac OS, all packages can be installed using `Homebrew <https://docs.brew.sh/Installation>`__. If Homebrew is not installed on your system, and if you are getting ready to install it, it is important to install the Xcode command line tools (as stated on Homebrew's website, but this step can easily be missed).
+
+To install the Xcode command line tools:
+
+.. code-block:: sh
+
+  xcode-select --install
+
+
+
+To verify that that the Xcode command line tools are installed and their version:
+
+.. code-block:: sh
+
+  xcode-select -v
+
+We are currently using xcode-select version 2354.
+
+.. code-block:: sh
+
+  brew install git git-lfs gcc python cmake libomp open-mpi
+
 
 
 Accessing GitHub
