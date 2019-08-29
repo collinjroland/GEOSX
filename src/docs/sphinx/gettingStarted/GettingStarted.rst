@@ -38,7 +38,7 @@ On Linux, the `apt <https://wiki.debian.org/Apt>`__ package manager syntax is sh
   sudo apt install git git-lfs gcc g++ gfortran python cmake zlib1g-dev libblas-dev liblapack-dev libopenmpi-dev
 
 
-For Mac OS, all packages can be installed using `Homebrew <https://docs.brew.sh/Installation>`__. If Homebrew is not installed on your system, and if you are getting ready to install it, it is important to install the Xcode command line tools (as stated on Homebrew's website, but this step can easily be missed).
+For Mac OS, all packages can be installed using `Homebrew <https://docs.brew.sh/Installation>`__. If Homebrew is not installed on your system, and if you are getting ready to install it, it is important to first install the Xcode command line tools (as stated on Homebrew's website, but this step can easily be missed).
 
 To install the Xcode command line tools:
 
@@ -54,30 +54,41 @@ To verify that that the Xcode command line tools are installed and their version
 
   xcode-select -v
 
-We are currently using xcode-select version 2354.
+We are currently using xcode-select version 2354. To install packages with Homebrew, the syntax is:
 
 .. code-block:: sh
 
   brew install git git-lfs gcc python cmake libomp open-mpi
 
 
+To verify the Homebrew installation, you can list packages currently ready to be used with the following syntax:
 
-Accessing GitHub
---------------------
+.. code-block:: sh
 
-GEOSX resides in a git repository hosted at https://github.com/GEOSX/GEOSX. To download the code, it is recommended to setup and use ssh keys as discussed
-`here <https://help.github.com/articles/adding-a-new-ssh-key-to-your-github-account/>`__.
+  brew list
 
-You can test that your SSH configuration works properly `here <https://help.github.com/en/articles/testing-your-ssh-connection>`__.
+Once this step is finished, you are ready to clone the third party libraries (TPL) and GEOSX.
 
-Alternatively, it is possible to use a less secured https tokens, as described `here <https://help.github.com/en/articles/git-automation-with-oauth-tokens>`__.
 
 Cloning the Third Party Libraries and GEOSX
 ==================================================================
 
-Before starting, let us create a directory to host the various clones required for an effective development workflow.
 
-1. Setup working directory
+Accessing GitHub
+--------------------
+
+GEOSX and its third party libraries reside in a git repository hosted at https://github.com/GEOSX/GEOSX. To download the code, it is recommended to setup and use ssh keys as discussed
+`here <https://help.github.com/articles/adding-a-new-ssh-key-to-your-github-account/>`__.
+
+You can test that your SSH configuration works properly `here <https://help.github.com/en/articles/testing-your-ssh-connection>`__.
+
+Alternatively, it is possible to use a less secure https tokens, as described `here <https://help.github.com/en/articles/git-automation-with-oauth-tokens>`__.
+
+
+Cloning GEOSX and the TPL
+----------------------------------------
+
+First, create a directory to host the various clones required for an effective development workflow.
 
 .. code-block:: sh
 
@@ -85,25 +96,22 @@ Before starting, let us create a directory to host the various clones required f
   cd geosx
 
 
-There are currently two separate repositories that should be downloaded.
-The first is the main repository, which may be cloned and initialized by the following steps:
+There are two separate repositories that should be downloaded (cloned) from GitHub. First, we clone GEOSX.
 
-2. Clone the main repository
-
-If you have successfully setup the SSH authentication:
+If SSH authentication is working:
 
 .. code-block:: sh
 
    git clone git@github.com:GEOSX/GEOSX.git
 
 
-Otherwise, if you use the https protocol:
+Or if you use the https protocol:
 
 .. code-block:: sh
 
    git clone https://github.com/GEOSX/GEOSX.git
 
-Then:
+Once this has been done, initialize and update GEOSX submodules:
 
 .. code-block:: sh
 
@@ -114,21 +122,37 @@ Then:
   cd ..
 
 
+Then, clone the third-party libraries (TPL):
 
-3. Clone the third-party libraries
+With SSH authentication:
 
 .. code-block:: sh
 
    git clone git@github.com:GEOSX/thirdPartyLibs.git
-   cd thirdPartyLibs
-   git lfs install
-   git pull
-   git submodule init
-   git submodule update
-   cd ..
 
-Note that git-lfs may not funct-on properly (or may be very slow) if version of git and git-lfs are not current.
+Or with https:
+
+.. code-block:: sh
+
+   git clone https://github.com/GEOSX/thirdPartyLibs.git
+
+Then again, initialize and update all TPL submodules:
+
+.. code-block:: sh
+
+  git clone git@github.com:GEOSX/thirdPartyLibs.git
+  cd thirdPartyLibs
+  git lfs install
+  git pull
+  git submodule init
+  git submodule update
+  cd ..
+
+
+Note that git-lfs may not function properly (or may be very slow) if version of git and git-lfs are not current.
 If you are using an older version of git/git-lfs you may need to add "git lfs pull" after "git pull" in the above procedures.
+
+
 
 Compiling the Code
 =================================
