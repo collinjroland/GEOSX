@@ -24,7 +24,7 @@
  */
 
 #include "CommunicationTools.hpp"
-
+#include "MPICommData.hpp"
 #include "common/TimingMacros.hpp"
 #include "managers/DomainPartition.hpp"
 #include "managers/ObjectManagerBase.hpp"
@@ -60,45 +60,6 @@ int CommunicationTools::MPI_Rank( MPI_Comm const & comm )
   return rank;
 }
 
-
-std::set<int> & CommunicationTools::getFreeCommIDs()
-{
-  static std::set<int> commIDs;
-  static bool isInitialized = false;
-
-  if( !isInitialized )
-  {
-    for( int a = 0 ; a < NeighborCommunicator::maxComm ; ++a )
-    {
-      commIDs.insert( a );
-    }
-    isInitialized = true;
-  }
-
-  return commIDs;
-}
-
-
-int CommunicationTools::reserveCommID()
-{
-  std::set<int> & commIDs = getFreeCommIDs();
-
-  int rval = *( commIDs.begin() );
-  commIDs.erase( rval );
-  return rval;
-}
-
-void CommunicationTools::releaseCommID( int & ID )
-{
-  std::set<int> & commIDs = getFreeCommIDs();
-
-  if( commIDs.count( ID ) > 0 )
-  {
-    GEOS_ERROR( "Attempting to release commID that is already free" );
-  }
-  commIDs.insert( ID );
-  ID = -1;
-}
 
 void CommunicationTools::AssignGlobalIndices( ObjectManagerBase & object,
                                               ObjectManagerBase const & compositionObject,
@@ -195,7 +156,7 @@ void CommunicationTools::AssignGlobalIndices( ObjectManagerBase & object,
     }
   }
 
-  int commID = reserveCommID();
+  MPICommData commData;
 
   // send the composition buffers
   {
@@ -207,12 +168,12 @@ void CommunicationTools::AssignGlobalIndices( ObjectManagerBase & object,
 
       neighbor.MPI_iSendReceive( reinterpret_cast<const char*>( objectToCompositionObjectSendBuffer.data() ),
                                  sendSize,
-                                 commID,
+                                 commData,
                                  MPI_COMM_GEOSX );
     }
     for( localIndex in = 0 ; in < neighbors.size() ; ++in )
     {
-      neighbors[in].MPI_WaitAll( commID );
+      neighbors[in].MPI_WaitAll( commData );
     }
   }
 
@@ -231,8 +192,8 @@ void CommunicationTools::AssignGlobalIndices( ObjectManagerBase & object,
     {
       NeighborCommunicator & neighbor = neighbors[neighborIndex];
 
-      globalIndex const * recBuffer = reinterpret_cast<globalIndex const *>( neighbor.ReceiveBuffer( commID ).data() );
-      localIndex recBufferSize = integer_conversion<localIndex>( neighbor.ReceiveBuffer( commID ).size() / sizeof(globalIndex));
+      globalIndex const * recBuffer = reinterpret_cast<globalIndex const *>( neighbor.ReceiveBuffer( commData ).data() );
+      localIndex recBufferSize = integer_conversion<localIndex>( neighbor.ReceiveBuffer( commData ).size() / sizeof(globalIndex));
       globalIndex const * endBuffer = recBuffer + recBufferSize;
       // iterate over data that was just received
       while( recBuffer < endBuffer )
@@ -262,7 +223,6 @@ void CommunicationTools::AssignGlobalIndices( ObjectManagerBase & object,
       }
     }
   }
-  releaseCommID( commID );
 
   // now check to see if the global index is valid. We do this by checking the contents of neighborCompositionObjects
   // with indexByFirstCompositionIndex
@@ -360,13 +320,13 @@ FindMatchedPartitionBoundaryObjects( ObjectManagerBase * const group,
     array1d< array1d<globalIndex> > neighborPartitionBoundaryObjects( allNeighbors.size() );
 //    matchedPartitionBoundaryObjects.resize( allNeighbors.size() );
 
-    int commID = reserveCommID();
+    MPICommData commData;
 
     for( int i=0 ; i<allNeighbors.size() ; ++i )
     {
       allNeighbors[i].MPI_iSendReceive( globalPartitionBoundaryObjectsIndices,
                                         neighborPartitionBoundaryObjects[i],
-                                        commID, MPI_COMM_GEOSX );
+                                        commData, MPI_COMM_GEOSX );
     }
 
     for( int i=0 ; i<allNeighbors.size() ; ++i )
@@ -377,7 +337,7 @@ FindMatchedPartitionBoundaryObjects( ObjectManagerBase * const group,
                                         GetGroup( std::to_string( neighbor.NeighborRank()))->
                                         getReference<localIndex_array>( group->m_ObjectManagerBaseViewKeys.matchedPartitionBoundaryObjects );
 
-      allNeighbors[i].MPI_WaitAll( commID );
+      allNeighbors[i].MPI_WaitAll( commData );
       localIndex localCounter = 0;
       localIndex neighborCounter = 0;
       while( localCounter < globalPartitionBoundaryObjectsIndices.size() &&
@@ -401,7 +361,6 @@ FindMatchedPartitionBoundaryObjects( ObjectManagerBase * const group,
         }
       }
     }
-    releaseCommID( commID );
   }
 }
 
@@ -410,17 +369,17 @@ FindMatchedPartitionBoundaryObjects( ObjectManagerBase * const group,
 void CommunicationTools::FindGhosts( MeshLevel * const meshLevel,
                                      array1d<NeighborCommunicator> & neighbors )
 {
-  int commID = CommunicationTools::reserveCommID();
+  MPICommData commData ;
 
   for( auto & neighbor : neighbors )
   {
-    neighbor.FindAndPackGhosts( false, 1, meshLevel, commID );
+    neighbor.FindAndPackGhosts( false, 1, meshLevel, commData );
   }
 
   for( auto & neighbor : neighbors )
   {
-    neighbor.MPI_WaitAll( commID );
-    neighbor.UnpackGhosts( meshLevel, commID );
+    neighbor.MPI_WaitAll( commData );
+    neighbor.UnpackGhosts( meshLevel, commData );
   }
   meshLevel->getNodeManager()->SetReceiveLists();
   meshLevel->getEdgeManager()->SetReceiveLists();
@@ -428,17 +387,16 @@ void CommunicationTools::FindGhosts( MeshLevel * const meshLevel,
 
   for( auto & neighbor : neighbors )
   {
-    neighbor.RebuildSyncLists( meshLevel, commID );
+    neighbor.RebuildSyncLists( meshLevel, commData );
   }
 
-  CommunicationTools::releaseCommID( commID );
 }
 
 
 void CommunicationTools::SynchronizePackSendRecvSizes( const std::map<string, string_array >& fieldNames,
                                                        MeshLevel * const mesh,
                                                        array1d<NeighborCommunicator> & neighbors,
-                                                       MPI_iCommData & icomm )
+                                                       MPICommData & icomm )
 {
   GEOSX_MARK_FUNCTION;
   icomm.fieldNames.insert(fieldNames.begin(), fieldNames.end() );
@@ -462,11 +420,11 @@ void CommunicationTools::SynchronizePackSendRecvSizes( const std::map<string, st
 void CommunicationTools::SynchronizePackSendRecv( const std::map<string, string_array >& fieldNames,
                                                   MeshLevel * const mesh,
                                                   array1d<NeighborCommunicator> & neighbors,
-                                                  MPI_iCommData & icomm )
+                                                  MPICommData & icomm )
 {
   GEOSX_MARK_FUNCTION;
 
-  MPI_iCommData sizeComm;
+  MPICommData sizeComm;
 
   //  raja::forall_in_range<RAJA::omp_parallel_for_exec>( 0, neighbors.size() ,[&] ( int neighborIndex)->void
   for( int neighborIndex=0 ; neighborIndex<neighbors.size() ; ++neighborIndex )
@@ -502,7 +460,7 @@ void CommunicationTools::SynchronizePackSendRecv( const std::map<string, string_
 
 void CommunicationTools::SynchronizeUnpack( MeshLevel * const mesh,
                                             array1d<NeighborCommunicator> & neighbors,
-                                            MPI_iCommData & icomm )
+                                            MPICommData & icomm )
 {
   GEOSX_MARK_FUNCTION;
 
@@ -547,7 +505,7 @@ void CommunicationTools::SynchronizeFields( const std::map<string, string_array 
                                             MeshLevel * const mesh,
                                             array1d<NeighborCommunicator> & neighbors )
 {
-  MPI_iCommData icomm;
+  MPICommData icomm;
   SynchronizePackSendRecvSizes( fieldNames, mesh, neighbors, icomm );
   SynchronizePackSendRecv( fieldNames, mesh, neighbors, icomm );
   SynchronizeUnpack( mesh, neighbors, icomm );

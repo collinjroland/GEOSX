@@ -4,6 +4,7 @@
 #
 set(MPI_Communications_headers
     CommunicationTools.hpp
+    MPICommData.hpp
     NeighborCommunicator.hpp
     PartitionBase.hpp
     SpatialPartition.hpp
@@ -15,6 +16,7 @@ set(MPI_Communications_headers
 #
 set(MPI_Communications_sources
     CommunicationTools.cpp
+    MPICommData.cpp
     NeighborCommunicator.cpp
     PartitionBase.cpp
     SpatialPartition.cpp

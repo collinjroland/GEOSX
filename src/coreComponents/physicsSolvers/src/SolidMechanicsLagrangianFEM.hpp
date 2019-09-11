@@ -252,7 +252,7 @@ private:
   array1d< array1d < set<localIndex> > > m_elemsNotAttachedToSendOrReceiveNodes;
   set<localIndex> m_sendOrRecieveNodes;
   set<localIndex> m_nonSendOrRecieveNodes;
-  MPI_iCommData m_icomm;
+  MPICommData m_icomm;
 
   SolidMechanics_LagrangianFEM();
 

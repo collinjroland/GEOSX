@@ -44,11 +44,8 @@ NeighborCommunicator::NeighborCommunicator():
   m_mpiRecvBufferRequest(),
   m_mpiSendBufferStatus(),
   m_mpiRecvBufferStatus()
-{GEOSX_MARK_FUNCTION;}
+{}
 
-//NeighborCommunicator::~NeighborCommunicator()
-//{
-//}
 
 void NeighborCommunicator::MPI_iSendReceive( char const * const sendBuffer,
                                              int const sendSize,
@@ -160,6 +157,37 @@ void NeighborCommunicator::MPI_iSendReceive( int const commID,
                     mpiComm );
 }
 
+void NeighborCommunicator::MPI_iSendReceive( localIndex const neighborIndex,
+                                             MPICommData & commData,
+                                             MPI_Comm mpiComm )
+{
+  MPI_iSendReceive( &commData.m_sendBufferSize[neighborIndex],
+                    1,
+                    commData.mpiSizeSendBufferRequest[neighborIndex],
+                    &commData.m_receiveBufferSize[neighborIndex],
+                    1,
+                    &commData.mpiSizeRecvBufferRequest[neighborIndex],
+                    commData.commID,
+                    mpiComm );
+
+  MPI_Wait( &( commData.mpiSizeRecvBufferRequest[neighborIndex] ),
+            &( commData.mpiSizeRecvBufferStatus[neighborIndex] ) );
+
+  commData.m_receiveBuffer[neighborIndex].resize( commData.m_receiveBufferSize[neighborIndex] );
+
+  MPI_iSendReceive( sendBuffer.data(),
+                    m_sendBufferSize[commID],
+                    sendReq,
+                    recvBuffer.data(),
+                    m_receiveBufferSize[commID],
+                    recvReq,
+                    commID,
+                    mpiComm );
+
+  MPI_Wait( &( commData.mpiSizeSendBufferRequest[neighborIndex] ),
+            &( commData.mpiSizeSendBufferStatus[neighborIndex] ) );
+
+}
 void NeighborCommunicator::MPI_iSendReceive( char const * const sendBuffer,
                                              int const sendSize,
                                              int const commID,
