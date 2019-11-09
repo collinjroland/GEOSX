@@ -520,6 +520,39 @@ if( ENABLE_SUPERLU_DIST)
 endif()
 
 ################################
+# VTK
+################################
+if( ENABLE_VTK)
+    message( STATUS "setting up VTK" )
+
+    set(VTK_DIR ${GEOSX_TPL_DIR}/vtk)
+    set(VTK_DIR_TEMP /g/g13/yoder6/projects/geosx/thirdPartyLibs/install-toss_3_x86_64_ib-clang@6.0.0-release/vtk)
+
+    include(${VTK_DIR_TEMP}/lib64/cmake/vtk-8.2/VTKConfig.cmake)
+    #include(${VTK_USE_FILE})
+    set(VTK_FOUND TRUE)
+
+    message(STATUS "VTK_INCLUDE_DIRS = ${VTK_INCLUDE_DIRS}" )
+    message(STATUS "VTK_LIBRARIES = ${VTK_LIBRARIES}" )
+    include(FindPackageHandleStandardArgs)
+    find_package_handle_standard_args(VTK  DEFAULT_MSG
+                                      VTK_INCLUDE_DIRS
+                                      VTK_LIBRARIES )
+
+    if (NOT VTK_FOUND)
+        message(FATAL_ERROR "VTK not found in ${VTK_DIR}. Maybe you need to build it")
+    endif()
+
+    blt_register_library( NAME vtk
+                          DEPENDS_ON hdf5 pugixml
+                          INCLUDES ${VTK_INCLUDE_DIRS} 
+                          LIBRARIES ${VTK_LIBRARIES}
+                          TREAT_INCLUDES_AS_SYSTEM ON )
+
+    set( thirdPartyLibs ${thirdPartyLibs} vtk )
+endif()
+
+################################
 # HYPRE
 ################################
 if( ENABLE_HYPRE )

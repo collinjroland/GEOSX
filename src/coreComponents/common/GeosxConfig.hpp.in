@@ -29,6 +29,8 @@
 #cmakedefine GEOSX_USE_HYPRE
 #cmakedefine GEOSX_USE_PETSC
 #cmakedefine GEOSX_LA_INTERFACE @GEOSX_LA_INTERFACE@
+#cmakedefine GEOSX_USE_VTK
+
 
 #cmakedefine FORTRAN_MANGLE_NO_UNDERSCORE
 

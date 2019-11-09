@@ -22,6 +22,7 @@ option( RAJA_ENABLE_TESTS "" OFF )
 
 option( ENABLE_GEOSX_PTP "" OFF)
 option( ENABLE_PAMELA "" ON )
+option( ENABLE_VTK "" ON )
 option( ENABLE_PVTPackage "" ON )
 
 option( ENABLE_FPARSER "Enables FPARSER" OFF )

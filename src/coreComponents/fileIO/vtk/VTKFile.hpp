@@ -26,6 +26,9 @@
 
 #include "dataRepository/xmlWrapper.hpp"
 
+#ifdef GEOSX_USE_VTK
+#include "vtkXMLPUnstructuredGridWriter.h"
+#endif
 
 namespace geosx
 {

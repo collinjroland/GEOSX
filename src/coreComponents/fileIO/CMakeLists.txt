@@ -21,7 +21,7 @@ set(fileIO_sources
   schema/SchemaUtilities.cpp
   blueprint/Blueprint.cpp )
 
-set( dependencyList common silo hdf5 pugixml RAJA  )
+set( dependencyList common silo hdf5 pugixml RAJA vtk )
 
 if( ENABLE_MPI )
   add_subdirectory(coupling/hdf5_interface)
