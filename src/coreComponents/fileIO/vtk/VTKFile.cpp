@@ -39,6 +39,7 @@ static std::unordered_map< string, int > geosxToVTKCellTypeMap =
   { "C3D8", 12 },
   { "", 9 } // QUAD ?
 };
+// Add arbitrary polyhedron, type 42
 
 static std::unordered_map< std::type_index, string > geosxToVTKTypeMap =
 {
