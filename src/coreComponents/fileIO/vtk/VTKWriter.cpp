@@ -13,14 +13,22 @@
  */
 
 /**
- * @file VTKFile.cpp
+ * @file VTKWriter.cpp
  */
 
-#include "VTKFile.hpp"
+#include "VTKWriter.hpp"
 #include <sys/stat.h>
 
 #include "dataRepository/Wrapper.hpp"
 #include "managers/DomainPartition.hpp"
+
+#ifdef GEOSX_USE_VTK
+#include "vtkPoints.h"
+#include "vtkPolyhedron.h"
+#include "vtkSmartPointer.h"
+#include "vtkUnstructuredGrid.h"
+#include "vtkXMLPUnstructuredGridWriter.h"
+#endif
 
 
 
@@ -31,17 +39,28 @@ using namespace dataRepository;
 namespace
 {
 /// Map from GEOSX type to VTK cell types
-static std::unordered_map< string, int > geosxToVTKCellTypeMap =
+std::unordered_map< string, string > geosxToVTKCellTypeMap =
 {
-  { "C3D4", 10 },
-  { "C3D5", 14 },
-  { "C3D6", 13 },
-  { "C3D8", 12 },
-  { "", 9 } // QUAD ?
+  { "C3D4", "VTK_TETRA" }, // 4 nodes
+  { "C3D5", "VTK_PYRAMID" }, // 5 nodes
+  { "C3D6", "VTK_WEDGE" }, // 6 nodes
+  { "C3D8", "VTK_HEXAHEDRON" }, // 8 nodes
+  { "", "VTK_QUAD" }, // 4 nodes, 2D
+  { "POLY", "VTK_POLYHEDRON" } // undefined number of nodes
 };
-// Add arbitrary polyhedron, type 42
 
-static std::unordered_map< std::type_index, string > geosxToVTKTypeMap =
+/// Map from GEOSX type to VTK cell types
+std::unordered_map< string, int > geosxToVTKCellTypeIdMap =
+{
+  { "C3D4", 10 }, // tetra
+  { "C3D5", 14 }, // pyramid
+  { "C3D6", 13 }, // wedge
+  { "C3D8", 12 }, // hexahedron
+  { "", 9 },      // quad
+  { "POLY", 42 }  // polyhedron
+};
+
+std::unordered_map< std::type_index, string > geosxToVTKTypeMap =
 {
   {std::type_index( typeid( integer ) ), "Int32"},
   {std::type_index( typeid( localIndex ) ), "Int64"},
@@ -63,45 +82,64 @@ static std::unordered_map< std::type_index, string > geosxToVTKTypeMap =
   {std::type_index( typeid( globalIndex_array2d ) ), "Int64"},
   {std::type_index( typeid( globalIndex_array3d ) ), "Int64"}
 };
+} /* namespace */
+
+vtkSmartPointer<vtkPoints> extractPoints( NodeManager const * nodeManager )
+{
+  int n_vertices = nodeManager->size(); // check type output
+  r1_array const & vertices = nodeManager->referencePosition();
+  vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
+  points->SetNumberOfPoints(n_vertices); // pre-allocate memory and set maximum Id
+  vtkIdType id[1];
+  for( int i = 0; i < n_vertices; ++i )
+  {
+    id[0] = i;
+    auto vertex = vertices[i];
+    // Insert vertex in vtkPoints array
+    points->SetPoint(id, vertex[0], vertex[1], vertex[2]);
+  }
+
+  points->Squeeze(); // Probably unnecessary, since we're allocating exactly the right number of points
+  return points
 }
+
+vtkSmartPointer<vtkCellArray> extractConnectivity( ElementRegionManager const * elemManager )
+{
+  localIndex n_cells = elemManager->getNumberOfElements< CellElementSubRegion >();
+  // cast to int
+
+  vtkSmartPointer<vtkCellArray> cells = vtkSmartPointer<vtkCellArray>::New();
+  cells->SetNumberOfCells(n_cells); //May need n_cells as vtkIdType
+
+  elemManager->forElementRegionsComplete< CellElementRegion >( [&]( localIndex const GEOSX_UNUSED_ARG( er ),
+                                                                auto const * const elemRegion )
+  {
+    elemRegion->template forElementSubRegions< CellElementSubRegion >( [&]( auto const * const elemSubRegion )
+    {
+      int type = geosxToVTKCellTypeIdMap.at( elemSubRegion->GetElementTypeString() );
+      for( localIndex k = 0; k < elemSubRegion->size(); ++k) {
+        auto & connectivities = elemSubRegion->nodeList(k);
+        // cases for each type
+        vtkSmartPointer<VTK_POLYHEDRON> currentCell = vtkSmartPointer<VTK_POLYHEDRON>::New();
+        // special loop for hexahedra
+        for( int i = 0; i < connectivities.size(); ++i) {
+          vtkIdType cellId[1] = {i};
+          vtkIdType meshId[1] = {connectivities[i]};
+          currentCell->SetId(cellId,meshId);
+        }
+        cells->InsertNextCell(currentCell);
+        // probably need to save 'type' in an int array too
+      }
+    });
+  });
+
+  cells->Squeeze();
+  return cells;
+}
+
 class CustomVTUXMLWriter
 {
   public:
-  CustomVTUXMLWriter() = delete;
-  CustomVTUXMLWriter( string const & fileName ) :
-      m_outFile( fileName, std::ios::binary ),
-      m_spaceCount(0)
-  {
-  }
-
-  /*!
-   * @brief Write the header of the VTU file with the XML version
-   */
-  void WriteHeader()
-  {
-    m_outFile << "<?xml version=\"1.0\"?>\n";
-  }
-
-  /*!
-   * @brief Write an opening XML node
-   * @param[in] nodeName the name of the node
-   * @param[in[ args list of pair {paramaters,value}
-   * @details This function also handle the spacing for good looking file
-   */
-  void OpenXMLNode( string const & nodeName, std::initializer_list< std::pair< string, string > > const & args)
-  {
-    for( int i = 0 ; i < m_spaceCount ; i++)
-    {
-      m_outFile << " ";
-    }
-    m_outFile << "<" << nodeName << " ";
-    for( auto param  : args )
-    {
-      m_outFile << param.first << "=\"" << param.second << "\" ";
-    }
-    m_outFile << ">\n";
-    m_spaceCount +=2;
-  }
 
   /*!
    * @brief Write the vertices coordinates
@@ -204,51 +242,7 @@ class CustomVTUXMLWriter
     }
   }
 
-  /*!
-   * @brief Method use to write, cells data size
-   * @param[in] nbTotalCells number of elements accross all the elementRegion
-   * @param[in] factor usually the size of the data type to be written, multiplied by the number of data by cells.
-   */
-  void WriteSize( localIndex nbTotalCells, localIndex factor )
-  {
-    std::stringstream stream;
-    std::uint32_t size = integer_conversion< std::uint32_t >( nbTotalCells * factor );
-    string outputString;
-    outputString.resize( FindBase64StringLength( sizeof(std::uint32_t ) ) );
-    stream << stringutilities::EncodeBase64( reinterpret_cast< const unsigned char * >( &size ), outputString, sizeof( std::uint32_t ) );
-    m_outFile << stream.rdbuf();
-  }
-
-  /*!
-   * @brief Close a XML node
-   * @param[in] nodeName name of the node to be closed
-   */
-  void CloseXMLNode( string const & nodeName )
-  {
-    m_spaceCount -=2;
-    for( int i = 0 ; i < m_spaceCount ; i++)
-    {
-      m_outFile << " ";
-    }
-    m_outFile << "</" << nodeName << ">\n";
-  }
-
   private:
-
-    void WriteBinaryVertices( r1_array const & vertices )
-    {
-      std::stringstream stream;
-      std::uint32_t size = integer_conversion< std::uint32_t >( vertices.size() ) * 3 *  sizeof( real64 );
-      string outputString;
-      outputString.resize( FindBase64StringLength( sizeof(std::uint32_t ) ) );
-      stream << stringutilities::EncodeBase64( reinterpret_cast< const unsigned char * >( &size ), outputString, sizeof( std::uint32_t ) );
-      outputString.resize(FindBase64StringLength( sizeof( real64 ) * 3 ) );
-      for( auto const & vertex : vertices )
-      {
-        stream << stringutilities::EncodeBase64( reinterpret_cast< const unsigned char * >( vertex.Data() ), outputString, 3*sizeof( real64 )) ;
-      }
-      DumpBuffer( stream );
-    }
 
     void WriteAsciiVertices( r1_array const & vertices )
     {
@@ -256,77 +250,6 @@ class CustomVTUXMLWriter
       {
         m_outFile << vertex << "\n";
       }
-    }
-
-    void WriteBinaryConnectivities( ElementRegionManager const * const elemManager )
-    {
-      std::stringstream stream;
-      integer multiplier = FindMultiplier( sizeof( localIndex ) );
-      string outputString;
-      outputString.resize( FindBase64StringLength( multiplier * sizeof( localIndex) ) );
-      localIndex_array connectivityFragment( multiplier );
-      integer countConnectivityFragment = 0;
-      elemManager->forElementRegionsComplete< CellElementRegion >( [&]( localIndex const GEOSX_UNUSED_ARG( er ),
-                                                               auto const * const elemRegion )
-      {
-        elemRegion->template forElementSubRegions< CellElementSubRegion >( [&]( auto const * const elemSubRegion )
-        {
-          integer type = geosxToVTKCellTypeMap.at( elemSubRegion->GetElementTypeString() );
-          auto & connectivities = elemSubRegion->nodeList();
-          if( type == 12 ) // Special case for hexahedron because of the internal ordering
-          {
-            for( localIndex i = 0 ; i < elemSubRegion->size() ; i++ )
-            {
-              for( integer j = 0; j < elemSubRegion->numNodesPerElement(); j++ )
-              {
-                if( j == 2 )
-                {
-                  connectivityFragment[countConnectivityFragment++] = connectivities[i][3];
-                }
-                else if( j == 3 )
-                {
-                  connectivityFragment[countConnectivityFragment++] = connectivities[i][2];
-                }
-                else if( j == 6 )
-                {
-                  connectivityFragment[countConnectivityFragment++] = connectivities[i][7];
-                }
-                else if( j == 7 )
-                {
-                  connectivityFragment[countConnectivityFragment++] = connectivities[i][6];
-                }
-                else
-                {
-                  connectivityFragment[countConnectivityFragment++] = connectivities[i][j];
-                }
-                if( countConnectivityFragment == multiplier )
-                {
-                  stream << stringutilities::EncodeBase64( reinterpret_cast< const unsigned char * >( connectivityFragment.data() ), outputString, sizeof( localIndex ) * multiplier );
-                  countConnectivityFragment = 0;
-                }
-              }
-            }
-          }
-          else
-          {
-            for( localIndex i = 0 ; i < elemSubRegion->size() ; i++ )
-            {
-              for( integer j = 0; j < elemSubRegion->numNodesPerElement(); j++ )
-              {
-                connectivityFragment[countConnectivityFragment++] = connectivities[i][j];
-                if( countConnectivityFragment == multiplier )
-                {
-                  stream << stringutilities::EncodeBase64( reinterpret_cast< const unsigned char * >( connectivityFragment.data() ), outputString, sizeof( localIndex ) * multiplier );
-                  countConnectivityFragment = 0;
-                }
-              }
-            }
-          }
-        });
-      });
-      outputString.resize( FindBase64StringLength( sizeof( localIndex ) * ( countConnectivityFragment) ) );
-      stream <<stringutilities::EncodeBase64( reinterpret_cast< const unsigned char * >( connectivityFragment.data() ), outputString, sizeof( localIndex ) * ( countConnectivityFragment) );
-      DumpBuffer( stream );
     }
 
     void WriteAsciiConnectivities( ElementRegionManager const * const elemManager )
@@ -383,38 +306,6 @@ class CustomVTUXMLWriter
       });
     }
 
-    void WriteBinaryOffsets( ElementRegionManager const * const elemManager )
-    {
-      std::stringstream stream;
-      integer multiplier = FindMultiplier( sizeof( integer ) ); // We do not write all the data at once to avoid creating a big table each time.
-      localIndex_array offsetFragment( multiplier );
-      string outputString;
-      outputString.resize( FindBase64StringLength( sizeof( localIndex ) * multiplier ) );
-      integer countOffsetFragmentIndex = 0;
-      localIndex curOffset = elemManager->GetRegion(0)->GetSubRegion(0)->numNodesPerElement();
-      elemManager->forElementRegionsComplete< CellElementRegion >( [&]( localIndex const GEOSX_UNUSED_ARG( er ),
-                                                                    auto const * const elemRegion )
-      {
-        elemRegion->template forElementSubRegions< CellElementSubRegion >( [&]( auto const * const elemSubRegion )
-        {
-          localIndex offSetForOneCell = elemSubRegion->numNodesPerElement();
-          for( localIndex i =  0; i < elemSubRegion->size(); i++ )
-          {
-            offsetFragment[countOffsetFragmentIndex++] = curOffset;   
-            curOffset += offSetForOneCell;
-            if( countOffsetFragmentIndex == multiplier )
-            {
-              stream << stringutilities::EncodeBase64( reinterpret_cast< const unsigned char * >( offsetFragment.data() ), outputString, sizeof( localIndex ) * multiplier );
-              countOffsetFragmentIndex = 0;
-            }
-          }
-        });
-      });
-      outputString.resize( FindBase64StringLength( sizeof( localIndex ) * ( countOffsetFragmentIndex) ) );
-      stream <<stringutilities::EncodeBase64( reinterpret_cast< const unsigned char * >( offsetFragment.data() ), outputString, sizeof( localIndex ) * ( countOffsetFragmentIndex) );
-      DumpBuffer( stream );
-    }
-
     void WriteAsciiTypes( ElementRegionManager const * const elemManager )
     {
       elemManager->forElementRegionsComplete< CellElementRegion >( [&]( localIndex const GEOSX_UNUSED_ARG( er ),
@@ -429,36 +320,6 @@ class CustomVTUXMLWriter
           }
         });
       });
-    }
-
-    void WriteBinaryTypes( ElementRegionManager const * const elemManager )
-    {
-      std::stringstream stream;
-      integer multiplier = FindMultiplier( sizeof( integer ) ); // We do not write all the data at once to avoid creating a big table each time.
-      integer_array typeFragment( multiplier );
-      string outputString;
-      outputString.resize( FindBase64StringLength( sizeof( integer ) * multiplier ) );
-      integer countTypeFragmentIndex = 0;
-      elemManager->forElementRegionsComplete< CellElementRegion >( [&]( localIndex const GEOSX_UNUSED_ARG( er ),
-                                                                    auto const * const elemRegion )
-      {
-        elemRegion->template forElementSubRegions< CellElementSubRegion >( [&]( auto const * const elemSubRegion )
-        {
-          integer type = geosxToVTKCellTypeMap.at( elemSubRegion->GetElementTypeString() );
-          for( localIndex i =  0; i < elemSubRegion->size(); i++ )
-          {
-            typeFragment[countTypeFragmentIndex++] = type;   
-            if( countTypeFragmentIndex == multiplier )
-            {
-              stream << stringutilities::EncodeBase64( reinterpret_cast< const unsigned char * >( typeFragment.data() ), outputString, sizeof( integer ) * multiplier );
-              countTypeFragmentIndex = 0;
-            }
-          }
-        });
-      });
-      outputString.resize( FindBase64StringLength( sizeof( integer ) * ( countTypeFragmentIndex) ) );
-      stream <<stringutilities::EncodeBase64( reinterpret_cast< const unsigned char * >( typeFragment.data() ), outputString, sizeof( localIndex ) * ( countTypeFragmentIndex) );
-      DumpBuffer( stream );
     }
 
     template< typename T >
@@ -638,7 +499,7 @@ inline void CustomVTUXMLWriter::WriteNodeBinaryData( Wrapper< r1_array > const &
   DumpBuffer( stream );
 }
 
-VTKFile::VTKFile( string const & name ):
+VTKWriter::VTKWriter( string const & name ):
   m_baseName( name ),
   m_binary( false )
 {
@@ -676,7 +537,6 @@ void VTKFile::Write( double const timeStep,
   NodeManager const * nodeManager = domain.getMeshBody(0)->getMeshLevel(0)->getNodeManager();
   string timeStepFolderName = m_baseName + "/" + std::to_string( timeStep );
   string format;
-  m_binary = false;
   if( m_binary )
   {
     format = "binary";
