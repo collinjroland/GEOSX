@@ -97,13 +97,13 @@ vtkSmartPointer<vtkPoints> extractPoints(NodeManager const *nodeManager)
 }
 
 vtkSmartPointer<vtkCellArray>
-extractConnectivity(ElementRegionManager const *elemManager)
+extractConnectivity(ElementRegionManager const *elemManager, int *cellTypes)
 {
-  localIndex n_cells = elemManager->getNumberOfElements<CellElementSubRegion>();
-  // cast to int
+  localIndex nCells = elemManager->getNumberOfElements<CellElementSubRegion>();
+  int currentIndex = 0;
 
   vtkSmartPointer<vtkCellArray> cells = vtkSmartPointer<vtkCellArray>::New();
-  cells->SetNumberOfCells(n_cells); // May need n_cells as vtkIdType
+  cells->SetNumberOfCells(nCells); // May need nCells as vtkIdType
 
   elemManager->forElementRegionsComplete<CellElementRegion>(
       [&](localIndex const GEOSX_UNUSED_ARG(er), auto const *const elemRegion) {
@@ -112,18 +112,32 @@ extractConnectivity(ElementRegionManager const *elemManager)
               int type = geosxToVTKCellTypeIdMap.at(
                   elemSubRegion->GetElementTypeString());
               for (localIndex k = 0; k < elemSubRegion->size(); ++k) {
+                cellTypes[currentIndex] = type;
+                currentIndex++;
                 auto &connectivities = elemSubRegion->nodeList(k);
                 // cases for each type
-                vtkSmartPointer<VTK_POLYHEDRON> currentCell =
-                    vtkSmartPointer<VTK_POLYHEDRON>::New();
-                // special loop for hexahedra
-                for (int i = 0; i < connectivities.size(); ++i) {
-                  vtkIdType cellId[1] = {i};
-                  vtkIdType meshId[1] = {connectivities[i]};
-                  currentCell->SetId(cellId, meshId);
+                if (type == 12) {
+                  // special loop for hexahedra
+                  vtkSmartPointer<vtkHexahedron> currentCell =
+                      vtkSmartPointer<vtkHexahedron>::New();
+                  currentCell->GetPointIds->SetId(0, connectivities[0]);
+                  currentCell->GetPointIds->SetId(1, connectivities[1]);
+                  currentCell->GetPointIds->SetId(2, connectivities[3]);
+                  currentCell->GetPointIds->SetId(3, connectivities[2]);
+                  currentCell->GetPointIds->SetId(4, connectivities[4]);
+                  currentCell->GetPointIds->SetId(5, connectivities[5]);
+                  currentCell->GetPointIds->SetId(6, connectivities[7]);
+                  currentCell->GetPointIds->SetId(7, connectivities[6]);
+                  cells->InsertNextCell(currentCell);
+                } else {
+                  cells->InsertNextCell(connectivities.size());
+                  for (int i = 0; i < connectivities.size(); ++i) {
+                    // May need conversion to vtkIdType
+                    cells->InsertCellPoint(connectivities[i]);
+                    // Probably needs third option with face stream for
+                    // arbitrary polyhedra
+                  }
                 }
-                cells->InsertNextCell(currentCell);
-                // probably need to save 'type' in an int array too
               }
             });
       });
@@ -132,7 +146,7 @@ extractConnectivity(ElementRegionManager const *elemManager)
   return cells;
 }
 
-output_mesh(double timeStep, DomainPartition const &domain)
+void VTKWriter::Write(double timeStep, DomainPartition const &domain)
 {
   ElementRegionManager const *elemManager =
       domain.getMeshBody(0)->getMeshLevel(0)->getElemManager();
@@ -140,20 +154,22 @@ output_mesh(double timeStep, DomainPartition const &domain)
       domain.getMeshBody(0)->getMeshLevel(0)->getNodeManager();
   auto dataView =
       elemManager->ConstructViewAccessor<cType>(std::get<0>(cellField));
+  localIndex totalNumberOfCells =
+      elemManager->getNumberOfElements<CellElementSubRegion>();
 
   // Extract data from mesh
   vtkSmartPointer<vtkPoints> points = extractPoints(nodeManager);
-  auto connectivity = extractConnectivity(elemManager);
-  vtkSmartPointer<vtkCellArray> cellArray = connectivity.cells;
-  auto typeArray = connectivity.types;
+  int cellTypes[totalNumberOfCells];
+  vtkSmartPointer<vtkCellArray> cellArray =
+      extractConnectivity(elemManager, cellTypes);
   // split into Point and Cell data fields?
-  auto fields = extractFieldData( dataView );
+  auto fields = extractCellData(dataView, elemManager);
 
   // Put data into VTK unstructured grid
   vtkSmartPointer<vtkUnstructuredGrid> ugrid =
       vtkSmartPointer<vtkUnstructuredGrid>::New();
   ugrid->SetPoints(points);
-  ugrid->SetCells(typeArray, cellArray);
+  ugrid->SetCells(cellTypes, cellArray);
   ugrid->; // set field data
 
   // Write results
@@ -167,6 +183,38 @@ output_mesh(double timeStep, DomainPartition const &domain)
   if (!binary):
     writer->SetDataModeToAscii();
   writer.Update();
+}
+
+
+
+/////////////////////////////////////////////////////
+// FUNCTIONS BELOW THIS COMMENT FOR REFERENCE ONLY //
+/////////////////////////////////////////////////////
+
+
+
+template <typename T>
+void WriteCellAsciiData(
+    ElementRegionManager::ElementViewAccessor<T> const &dataView,
+    ElementRegionManager const *const elemManager)
+{
+  elemManager->forElementRegionsComplete<CellElementRegion>(
+      [&](localIndex const er, auto const *const elemRegion) {
+        elemRegion->template forElementSubRegionsIndex<CellElementSubRegion>(
+            [&](localIndex const esr, auto const *const elemSubRegion) {
+              for (localIndex ei = 0; ei < elemSubRegion->size(); ei++) {
+                m_outFile << dataView[er][esr][ei] << "\n";
+              }
+            });
+      });
+}
+
+template <typename T> void WriteNodeAsciiData(Wrapper<T> const &dataView)
+{
+  auto &viewRef = dataView.reference();
+  for (localIndex i = 0; i < viewRef.size(); i++) {
+    m_outFile << viewRef[i] << "\n";
+  }
 }
 
 class CustomVTUXMLWriter {
@@ -342,22 +390,6 @@ private:
   }
 
   template <typename T>
-  void WriteCellAsciiData(
-      ElementRegionManager::ElementViewAccessor<T> const &dataView,
-      ElementRegionManager const *const elemManager)
-  {
-    elemManager->forElementRegionsComplete<CellElementRegion>(
-        [&](localIndex const er, auto const *const elemRegion) {
-          elemRegion->template forElementSubRegionsIndex<CellElementSubRegion>(
-              [&](localIndex const esr, auto const *const elemSubRegion) {
-                for (localIndex ei = 0; ei < elemSubRegion->size(); ei++) {
-                  m_outFile << dataView[er][esr][ei] << "\n";
-                }
-              });
-        });
-  }
-
-  template <typename T>
   void WriteCellBinaryData(
       ElementRegionManager::ElementViewAccessor<T> const &dataView,
       ElementRegionManager const *const elemManager)
@@ -407,14 +439,6 @@ private:
         reinterpret_cast<const unsigned char *>(dataFragment.data()),
         outputString, sizeof(dataView[0][0][0]) * (countDataFragment));
     DumpBuffer(stream);
-  }
-
-  template <typename T> void WriteNodeAsciiData(Wrapper<T> const &dataView)
-  {
-    auto &viewRef = dataView.reference();
-    for (localIndex i = 0; i < viewRef.size(); i++) {
-      m_outFile << viewRef[i] << "\n";
-    }
   }
 
   template <typename T> void WriteNodeBinaryData(Wrapper<T> const &dataView)

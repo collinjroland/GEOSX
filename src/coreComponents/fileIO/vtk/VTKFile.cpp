@@ -676,7 +676,7 @@ void VTKFile::Write( double const timeStep,
   NodeManager const * nodeManager = domain.getMeshBody(0)->getMeshLevel(0)->getNodeManager();
   string timeStepFolderName = m_baseName + "/" + std::to_string( timeStep );
   string format;
-  m_binary = false;
+  // m_binary = false;
   if( m_binary )
   {
     format = "binary";
