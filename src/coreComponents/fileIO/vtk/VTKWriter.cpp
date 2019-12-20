@@ -134,7 +134,7 @@ extractConnectivity(ElementRegionManager const *elemManager, int *cellTypes)
                   for (int i = 0; i < connectivities.size(); ++i) {
                     // May need conversion to vtkIdType
                     cells->InsertCellPoint(connectivities[i]);
-                    // Probably needs third option with face stream for
+                    // Needs third option with face stream for
                     // arbitrary polyhedra
                   }
                 }
@@ -162,36 +162,36 @@ void VTKWriter::Write(double timeStep, DomainPartition const &domain)
   int cellTypes[totalNumberOfCells];
   vtkSmartPointer<vtkCellArray> cellArray =
       extractConnectivity(elemManager, cellTypes);
-  // split into Point and Cell data fields?
-  auto fields = extractCellData(dataView, elemManager);
+  vtkDataArray pointData = extractPointData(dataView, elemManager); // Implement me
+  vtkDataArray cellData = extractCellData(dataView, elemManager); // Implement me
 
   // Put data into VTK unstructured grid
   vtkSmartPointer<vtkUnstructuredGrid> ugrid =
       vtkSmartPointer<vtkUnstructuredGrid>::New();
   ugrid->SetPoints(points);
   ugrid->SetCells(cellTypes, cellArray);
-  ugrid->; // set field data
+  // If applicable, could put switch case of
+  // SetScalars/SetVectors/SetNormals/SetTensors/SetTCoords
+  ugrid->GetPointData->SetScalars(pointData);
+  ugrid->GetCellData->SetScalars(cellData);
 
   // Write results
   vtkSmartPointer<vtkXMLPUnstructuredGridWriter> writer =
       vtkSmartPointer<vtkXMLPUnstructuredGridWriter>::New();
   writer->SetInputData(ugrid);
   writer->SetFileName(outFile.c_str());
-  writer->SetNumberOfPieces(nPieces);
+  writer->SetNumberOfPieces(
+      nPieces); // nPieces needs to be calculated somewhere
   writer->SetStartPiece(0);
   writer->SetEndPiece(nPieces - 1);
-  if (!binary):
+  if (!m_binary):
     writer->SetDataModeToAscii();
   writer.Update();
 }
 
-
-
 /////////////////////////////////////////////////////
 // FUNCTIONS BELOW THIS COMMENT FOR REFERENCE ONLY //
 /////////////////////////////////////////////////////
-
-
 
 template <typename T>
 void WriteCellAsciiData(
