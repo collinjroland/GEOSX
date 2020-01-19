@@ -14,6 +14,7 @@ SinglePhaseWell              node :ref:`DATASTRUCTURE_SinglePhaseWell`
 SolidMechanicsLagrangianSSLE node :ref:`DATASTRUCTURE_SolidMechanicsLagrangianSSLE` 
 SolidMechanics_LagrangianFEM node :ref:`DATASTRUCTURE_SolidMechanics_LagrangianFEM` 
 SurfaceGenerator             node :ref:`DATASTRUCTURE_SurfaceGenerator`             
+TwoPhaseWell                 node :ref:`DATASTRUCTURE_TwoPhaseWell`                 
 ============================ ==== ================================================= 
 
 

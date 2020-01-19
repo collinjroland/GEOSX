@@ -315,6 +315,20 @@ Element: MeshFile
 .. include:: ../../coreComponents/fileIO/schema/docs/MeshFile.rst
 
 
+.. _XML_MultiPhaseMultiComponentFluid:
+
+Element: MultiPhaseMultiComponentFluid
+======================================
+.. include:: ../../coreComponents/fileIO/schema/docs/MultiPhaseMultiComponentFluid.rst
+
+
+.. _XML_NonlinearSolverParameters:
+
+Element: NonlinearSolverParameters
+==================================
+.. include:: ../../coreComponents/fileIO/schema/docs/NonlinearSolverParameters.rst
+
+
 .. _XML_NumericalMethods:
 
 Element: NumericalMethods
@@ -502,6 +516,13 @@ Element: TableFunction
 Element: ThickPlane
 ===================
 .. include:: ../../coreComponents/fileIO/schema/docs/ThickPlane.rst
+
+
+.. _XML_TwoPhaseWell:
+
+Element: TwoPhaseWell
+=====================
+.. include:: ../../coreComponents/fileIO/schema/docs/TwoPhaseWell.rst
 
 
 .. _XML_TwoPointFluxApproximation:
@@ -879,6 +900,20 @@ Datastructure: MeshFile
 .. include:: ../../coreComponents/fileIO/schema/docs/MeshFile_other.rst
 
 
+.. _DATASTRUCTURE_MultiPhaseMultiComponentFluid:
+
+Datastructure: MultiPhaseMultiComponentFluid
+============================================
+.. include:: ../../coreComponents/fileIO/schema/docs/MultiPhaseMultiComponentFluid_other.rst
+
+
+.. _DATASTRUCTURE_NonlinearSolverParameters:
+
+Datastructure: NonlinearSolverParameters
+========================================
+.. include:: ../../coreComponents/fileIO/schema/docs/NonlinearSolverParameters_other.rst
+
+
 .. _DATASTRUCTURE_NumericalMethods:
 
 Datastructure: NumericalMethods
@@ -1066,6 +1101,13 @@ Datastructure: TableFunction
 Datastructure: ThickPlane
 =========================
 .. include:: ../../coreComponents/fileIO/schema/docs/ThickPlane_other.rst
+
+
+.. _DATASTRUCTURE_TwoPhaseWell:
+
+Datastructure: TwoPhaseWell
+===========================
+.. include:: ../../coreComponents/fileIO/schema/docs/TwoPhaseWell_other.rst
 
 
 .. _DATASTRUCTURE_TwoPointFluxApproximation:

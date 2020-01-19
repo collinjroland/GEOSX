@@ -9,6 +9,7 @@ set( physicsSolvers_headers
      PhysicsSolverManager.hpp
      SolverBase.hpp
      SystemSolverParameters.hpp
+     NonlinearSolverParameters.hpp
      fluidFlow/CompositionalMultiphaseFlow.hpp
      fluidFlow/CompositionalMultiphaseFlowKernels.hpp
      fluidFlow/CompositionalMultiphaseWell.hpp
@@ -17,6 +18,7 @@ set( physicsSolvers_headers
      fluidFlow/SinglePhaseFlowKernels.hpp
      fluidFlow/SinglePhaseWell.hpp
      fluidFlow/WellSolverBase.hpp
+     fluidFlow/TwoPhaseWell.hpp
      multiphysics/HydrofractureSolver.hpp
      multiphysics/PoroelasticSolver.hpp
      multiphysics/ReservoirSolver.hpp
@@ -35,6 +37,7 @@ set( physicsSolvers_sources
      PhysicsSolverManager.cpp
      SolverBase.cpp
      SystemSolverParameters.cpp
+     NonlinearSolverParameters.cpp
      fluidFlow/CompositionalMultiphaseFlow.cpp
      fluidFlow/CompositionalMultiphaseFlowKernels.cpp
      fluidFlow/CompositionalMultiphaseWell.cpp
@@ -43,6 +46,7 @@ set( physicsSolvers_sources
      fluidFlow/SinglePhaseFlowKernels.cpp
      fluidFlow/SinglePhaseWell.cpp
      fluidFlow/WellSolverBase.cpp
+     fluidFlow/TwoPhaseWell.cpp
      multiphysics/HydrofractureSolver.cpp
      multiphysics/PoroelasticSolver.cpp
      multiphysics/ReservoirSolver.cpp

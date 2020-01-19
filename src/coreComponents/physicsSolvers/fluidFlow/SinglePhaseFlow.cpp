@@ -407,8 +407,7 @@ void SinglePhaseFlow::AssembleSystem( real64 const time_n,
 
   if( getLogLevel() >= 3 )
   {
-    SystemSolverParameters * const solverParams = getSystemSolverParameters();
-    integer newtonIter = solverParams->numNewtonIterations();
+    integer newtonIter = m_nonlinearSolverParameters.m_numNewtonIterations;
 
     string filename_mat = "matrix_" + std::to_string( time_n ) + "_" + std::to_string( newtonIter ) + ".mtx";
     matrix.write( filename_mat, true );
@@ -638,7 +637,7 @@ SinglePhaseFlow::ApplyBoundaryConditions( real64 const time_n,
 
   // call the BoundaryConditionManager::ApplyField function that will check to see
   // if the boundary condition should be applied to this subregion
-  fsManager.Apply( time_n + dt, domain, "ElementRegions", "FLUX",
+  fsManager.Apply( time_n + dt, domain, "ElementRegions", FieldSpecificationBase::viewKeyStruct::fluxBoundaryConditionString,
                    [&]( FieldSpecificationBase const * const fs,
                         string const &,
                         set<localIndex> const & lset,
@@ -661,7 +660,6 @@ SinglePhaseFlow::ApplyBoundaryConditions( real64 const time_n,
     }
 
     fs->ApplyBoundaryConditionToSystem<FieldSpecificationAdd, LAInterface>( localSet,
-                                                                            true,
                                                                             time_n + dt,
                                                                             dt,
                                                                             subRegion,
@@ -697,7 +695,6 @@ SinglePhaseFlow::ApplyBoundaryConditions( real64 const time_n,
 
     // call the application of the boundary condition to alter the matrix and rhs
     fs->ApplyBoundaryConditionToSystem<FieldSpecificationEqual, LAInterface>( lset,
-                                                                              false,
                                                                               time_n + dt,
                                                                               subRegion,
                                                                               dofNumber,
@@ -723,8 +720,7 @@ SinglePhaseFlow::ApplyBoundaryConditions( real64 const time_n,
 
   if( getLogLevel() >= 3 )
   {
-    SystemSolverParameters * const solverParams = getSystemSolverParameters();
-    integer newtonIter = solverParams->numNewtonIterations();
+    integer newtonIter = m_nonlinearSolverParameters.m_numNewtonIterations;
 
     string filename_mat = "matrix_bc_" + std::to_string( time_n ) + "_" + std::to_string( newtonIter ) + ".mtx";
     matrix.write( filename_mat, true );
