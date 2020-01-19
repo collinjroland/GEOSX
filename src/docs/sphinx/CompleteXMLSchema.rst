@@ -518,6 +518,13 @@ Element: ThickPlane
 .. include:: ../../coreComponents/fileIO/schema/docs/ThickPlane.rst
 
 
+.. _XML_TwoPhaseHybridFVM:
+
+Element: TwoPhaseHybridFVM
+==========================
+.. include:: ../../coreComponents/fileIO/schema/docs/TwoPhaseHybridFVM.rst
+
+
 .. _XML_TwoPhaseWell:
 
 Element: TwoPhaseWell
@@ -1101,6 +1108,13 @@ Datastructure: TableFunction
 Datastructure: ThickPlane
 =========================
 .. include:: ../../coreComponents/fileIO/schema/docs/ThickPlane_other.rst
+
+
+.. _DATASTRUCTURE_TwoPhaseHybridFVM:
+
+Datastructure: TwoPhaseHybridFVM
+================================
+.. include:: ../../coreComponents/fileIO/schema/docs/TwoPhaseHybridFVM_other.rst
 
 
 .. _DATASTRUCTURE_TwoPhaseWell:
