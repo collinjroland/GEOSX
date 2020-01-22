@@ -1131,6 +1131,8 @@
 		<xsd:attribute name="targetRegions" type="string_array" use="required" />
 		<!--wellFluidName => Name of fluid constitutive object to use for this solver.-->
 		<xsd:attribute name="wellFluidName" type="string" use="required" />
+		<!--wellRelPermName => Name of the relative permeability constitutive model to use-->
+		<xsd:attribute name="wellRelPermName" type="string" use="required" />
 		<!--name => A name is required for any non-unique nodes-->
 		<xsd:attribute name="name" type="string" use="required" />
 	</xsd:complexType>

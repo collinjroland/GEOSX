@@ -463,8 +463,13 @@ void TwoPhaseBase::AssembleSystem( real64 const time_n,
 
   AssembleFluxTerms( time_n, dt, domain, &dofManager, &matrix, &rhs );
 
-  matrix.close();
-  rhs.close();
+  if (!m_coupledWellsFlag)
+  {
+    // these functions will be called by the ReservoirSolver
+    // when coupled wells are present
+    matrix.close();
+    rhs.close();
+  }
   
   // Debug for logLevel >= 2
   GEOSX_LOG_LEVEL_RANK_0( 2, "After TwoPhaseBase::AssembleSystem" );

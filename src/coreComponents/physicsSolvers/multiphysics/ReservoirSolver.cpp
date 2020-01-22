@@ -72,6 +72,9 @@ real64 ReservoirSolver::SolverStep( real64 const & time_n,
 {
   real64 dt_return = dt;
 
+  // setup the coupled linear system  
+  SetupSystem( domain, m_dofManager, m_matrix, m_rhs, m_solution );
+
   // setup reservoir and well systems
   ImplicitStepSetup( time_n, dt, domain, m_dofManager, m_matrix, m_rhs, m_solution );
 
@@ -108,8 +111,6 @@ void ReservoirSolver::ImplicitStepSetup( real64 const & time_n,
                                    rhs,
                                    solution );
 
-  // setup the coupled linear system
-  SetupSystem( domain, dofManager, matrix, rhs, solution );
 }
 
 void ReservoirSolver::SetupDofs( DomainPartition const * const domain,
@@ -238,6 +239,7 @@ void ReservoirSolver::AssembleSystem( real64 const time_n,
                                 dofManager,
                                 matrix,
                                 rhs );
+
   // assemble J_WW, J_WR, J_RW + perforation rates in J_RR
   m_wellSolver->AssembleSystem( time_n, dt, domain,
                                 dofManager,

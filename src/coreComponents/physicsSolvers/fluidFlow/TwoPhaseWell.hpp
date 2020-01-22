@@ -20,7 +20,7 @@
 #define GEOSX_PHYSICSSOLVERS_FLUIDFLOW_TWOPHASEWELL_HPP_
 
 #include "WellSolverBase.hpp"
-//#include "physicsSolvers/fluidFlow/TwoPhaseBase.hpp"
+#include "physicsSolvers/fluidFlow/TwoPhaseBase.hpp"
 
 namespace geosx
 {
@@ -117,7 +117,7 @@ public:
 
   virtual string WellElementDofName() const override { return viewKeyStruct::dofFieldString; }
 
-  virtual string ResElementDofName() const override { return viewKeyStruct::pressureString; }
+  virtual string ResElementDofName() const override { return TwoPhaseBase::viewKeyStruct::elemDofFieldString; }
 
   virtual localIndex NumFluidComponents() const override { return 1; }
 
@@ -126,7 +126,7 @@ public:
    * @param subRegion the well subRegion containing the well elements and their associated fields
    */
   virtual void UpdateState( WellElementSubRegion * subRegion ) override;
-  
+ 
   /**
    * @brief assembles the flux terms for all connections between well elements
    * @param time_n previous time value
@@ -205,23 +205,34 @@ public:
   {
     static constexpr auto dofFieldString = "twoPhaseWellVars";
 
+    static constexpr auto resRelPermNameString  = "wellRelPermName";
+    static constexpr auto resRelPermIndexString = "elementRelPermIndex";
+
     // primary solution field
-    static constexpr auto pressureString      = "pressure"; //TwoPhaseFlow::viewKeyStruct::pressureString;
-    static constexpr auto deltaPressureString = "deltaPressure"; //TwoPhaseFlow::viewKeyStruct::deltaPressureString;
+    static constexpr auto pressureString      = TwoPhaseBase::viewKeyStruct::pressureString;
+    static constexpr auto deltaPressureString = TwoPhaseBase::viewKeyStruct::deltaPressureString;
+
+    // density (lagged in iteration)
+    static constexpr auto mixtureDensityString = "wellElementMixtureDensity";
 
     // perforation rates
-    static constexpr auto perforationRateString        = "perforationRate";
-    static constexpr auto dPerforationRate_dPresString = "dPerforationRate_dPres";
+    static constexpr auto perforationRateString          = "perforationRate";
+    static constexpr auto dPerforationRate_dPresString   = "dPerforationRate_dPressure";
+    static constexpr auto dPerforationRate_dResSatString = "dPerforationRate_dResWettingPhaseSaturation";    
     
     using ViewKey = dataRepository::ViewKey;
 
+    ViewKey resRelPermName  = { resRelPermNameString };
+    ViewKey resRelPermIndex = { resRelPermIndexString };
+    
     // primary solution field
     ViewKey pressure      = { pressureString };
     ViewKey deltaPressure = { deltaPressureString };
     
     // perforation rates
-    ViewKey perforationRate        = { perforationRateString };
-    ViewKey dPerforationRate_dPres = { dPerforationRate_dPresString };
+    ViewKey perforationRate          = { perforationRateString };
+    ViewKey dPerforationRate_dPres   = { dPerforationRate_dPresString };
+    ViewKey dPerforationRate_dResSat = { dPerforationRate_dResSatString };    
     
   } viewKeysTwoPhaseWell;
 
@@ -241,6 +252,15 @@ private:
    */
   void ResetViews( DomainPartition * const domain ) override;
 
+  /**
+   * @brief Resize the allocated multidimensional fields
+   * @param domain the domain containing the mesh and fields
+   *
+   * Resize fields along dimensions 1 and 2 (0 is the size of containing object, i.e. element subregion)
+   * once the number of phases/components is known (e.g. component fractions)
+   */
+  void ResizeFields( MeshLevel * const meshLevel );
+  
   /**
    * @brief Initialize all the primary and secondary variables in all the wells
    * @param domain the domain containing the well manager to access individual wells
@@ -265,11 +285,23 @@ private:
    */
   void RecordWellData( WellElementSubRegion const * const subRegion );
 
+  /// map from the phase indices to the row indices
+  array1d<localIndex> m_phaseToRow;
+  
   /// index of the wetting phase in the MaterialViewAccessors
   localIndex m_ipw;
 
   /// index of the non-wetting phase in the MaterialViewAccessors
   localIndex m_ipnw;
+
+  /// index of the phase injected into the reservoir
+  localIndex m_injectedPhase;
+
+  /// name of the rel perm constitutive model
+  string m_resRelPermName;
+
+  /// index of the rel perm constitutive model in the flow solver
+  localIndex m_resRelPermIndex;
   
   /// views into reservoir primary variable fields
 
@@ -279,6 +311,9 @@ private:
   ElementRegionManager::ElementViewAccessor<arrayView1d<real64>> m_resWettingPhaseSat;
   ElementRegionManager::ElementViewAccessor<arrayView1d<real64>> m_deltaResWettingPhaseSat;
 
+  ElementRegionManager::ElementViewAccessor<arrayView2d<real64>> m_resPhaseMob;
+  ElementRegionManager::ElementViewAccessor<arrayView2d<real64>> m_dResPhaseMob_dPres;
+  ElementRegionManager::ElementViewAccessor<arrayView2d<real64>> m_dResPhaseMob_dSat;
   
   /// views into reservoir material fields
 
