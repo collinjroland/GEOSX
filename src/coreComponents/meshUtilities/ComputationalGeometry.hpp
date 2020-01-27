@@ -20,12 +20,14 @@
 #define GEOSX_MESHUTILITIES_COMPUTATIONALGEOMETRY_HPP_
 
 #include "common/DataTypes.hpp"
+#include "mesh/InterObjectRelation.hpp"
 
 namespace geosx
 {
 namespace computationalGeometry
 {
 
+  
 /**
  * Calculates the centroid of a convex 3D polygon as well as the normal
  * @param[in] pointIndices list of index references for the points array in
@@ -112,6 +114,19 @@ bool IsPointInsidePolyhedron( arrayView1d<R1Tensor const> const & nodeCoordinate
                               R1Tensor const & point,
                               real64 const areaTolerance = 0.0 );
 
+/**
+ * @brief Compute the dimensions of the bounding box containing the element
+          defined here by the coordinates of its vertices  
+ * @param[in] elemIndex index of the element in pointIndices
+ * @param[in] pointIndices the indices of the vertices in pointCoordinates 
+ * @param[in] pointCoordinates the vertices coordinates
+ * @return an R1Tensor containing the dimensions of the box
+ */
+template<typename NODEMAP>
+R1Tensor GetBoundingBox( localIndex elemIndex,
+                         NODEMAP const & pointIndices,
+                         arrayView1d<R1Tensor const> const & pointCoordinates );
+
 real64 HexVolume( R1Tensor const * const points );
 
 real64 TetVolume( R1Tensor const * const points );
@@ -119,7 +134,7 @@ real64 TetVolume( R1Tensor const * const points );
 real64 WedgeVolume( R1Tensor const * const points );
 
 real64 PyramidVolume( R1Tensor const * const points );
-
+  
 inline void VectorDifference( array1d< R1Tensor > const & X,
                               localIndex const index0,
                               localIndex const index1,
@@ -142,7 +157,51 @@ inline void VectorMean( array1d< R1Tensor > const & X,
   vec /= N;
 }
 
+
 }
+
+
+template<typename NODEMAP>
+R1Tensor computationalGeometry::GetBoundingBox( localIndex elemIndex,
+                                                NODEMAP const & pointIndices,
+                                                arrayView1d<R1Tensor const> const & pointCoordinates )
+{
+  localIndex constexpr dim = 3;
+  
+  // these arrays will store the min and max coordinates of the elem in each direction
+  R1Tensor minCoords(  1e99 );
+  R1Tensor maxCoords( -1e99 );
+
+  // loop over all the vertices of the element to get the min and max coords
+  for (localIndex a = 0; a < pointIndices.size( 1 ); ++a)
+  {
+    localIndex const id = pointIndices( elemIndex, a );
+    R1Tensor const coords = pointCoordinates[id];
+
+    for (localIndex d = 0; d < dim; ++d)
+    {  
+      if (coords[d] < minCoords[d])
+      {
+        minCoords[d] = coords[d];
+      }
+      else if (coords[d] > maxCoords[d])
+      {
+        maxCoords[d] = coords[d];
+      }
+    }
+  }
+
+  // compute the dimensions of the bounding box
+  R1Tensor box( 0 );
+  for (localIndex d = 0; d < dim; ++d)
+  {
+    box[d] = maxCoords[d] - minCoords[d];
+  }
+ 
+  return box;
+}
+
+
 } /* namespace geosx */
 
 #endif /* GEOSX_MESHUTILITIES_COMPUTATIONALGEOMETRY_HPP_ */

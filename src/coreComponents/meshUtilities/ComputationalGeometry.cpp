@@ -23,7 +23,7 @@ namespace geosx
 namespace computationalGeometry
 {
 
-/**
+  /**
  * Calculates the centroid of a convex 3D polygon as well as the normal
  * @param[in] pointIndices list of index references for the points array in
  * order (CW or CCW) about the polygon loop
@@ -387,6 +387,6 @@ real64 PyramidVolume( R1Tensor const * const X ) {
     tet2[3] = X[4];
     return TetVolume(tet1) + TetVolume(tet2);
 }
-
+ 
 }
 } /* namespace geosx */
