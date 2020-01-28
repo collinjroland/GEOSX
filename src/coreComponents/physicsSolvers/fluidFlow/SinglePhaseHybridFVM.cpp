@@ -36,8 +36,8 @@ SinglePhaseHybridFVM::SinglePhaseHybridFVM( const std::string& name,
   SinglePhaseBase(name, parent),
   m_faceDofKey(""),
   m_areaRelTol(1e-8),
-  m_ipType(InnerProductType::QUASI_TPFA),
-  m_orthonormalizeWithSVD(false) 
+  m_ipType(InnerProductType::TPFA),
+  m_orthonormalizeWithSVD(true) 
 {
  
   // one cell-centered dof per cell
@@ -761,7 +761,7 @@ void SinglePhaseHybridFVM::ApplySystemSolution( DofManager const & dofManager,
                                                 real64 const scalingFactor,
                                                 DomainPartition * const domain )
 {
-  MeshLevel * const mesh          = domain->getMeshBody(0)->getMeshLevel(0);
+  MeshLevel * const mesh = domain->getMeshBody(0)->getMeshLevel(0);
 
   // here we apply the cell-centered update in the derived class
   // to avoid duplicating a synchronization point 

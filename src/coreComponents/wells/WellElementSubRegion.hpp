@@ -224,6 +224,9 @@ public:
                  globalIndex                        nodeOffsetGlobal,
                  globalIndex                        elemOffsetGlobal );
 
+  void ConnectPerforationsToMeshElements( MeshLevel                   & mesh,
+                                          InternalWellGenerator const & wellGeometry );
+  
   /*
    * @brief Reconstruct the (local) map nextWellElemId using nextWellElemIdGlobal after the ghost exchange
    */
@@ -305,7 +308,6 @@ private:
   void CheckPartitioningValidity( InternalWellGenerator const & wellGeometry,
                                   set<globalIndex>            & localElems,
                                   arrayView1d<integer>        & elemStatusGlobal ) const;
-
   /**
    * @brief Now that the well elements are assigned, collect the nodes and tag the boundary nodes between ranks
             The function WellElementSubRegion::AssignUnownedElements must have been called before this function
@@ -360,6 +362,38 @@ private:
    */ 
   void UpdateNodeManagerNodeToElementMap( MeshLevel & mesh );
 
+  void InitializeLocalSearch( MeshLevel const & mesh,
+                              R1Tensor  const & location,
+                              localIndex      & erInit,
+                              localIndex      & esrInit,
+                              localIndex      & eiInit) const;
+
+  bool SearchLocalElements( MeshLevel  const & mesh,
+                            R1Tensor   const & location,
+                            localIndex const & erInit,
+                            localIndex const & esrInit,
+                            localIndex const & eiInit,
+                            localIndex       & erMatched,
+                            localIndex       & esrMatched,
+                            localIndex       & eiMatched ) const;
+  
+  bool VisitNeighborElements( MeshLevel const  & mesh,
+                              R1Tensor  const  & location,
+                              set<localIndex>  & nodes,
+                              set<globalIndex> & elements,
+                              localIndex       & erMatched,
+                              localIndex       & esrMatched,
+                              localIndex       & eiMatched ) const;
+  
+  void CollectElementNodes( CellBlock const * subRegion,
+                            localIndex        ei,
+                            set<localIndex> & nodes ) const;
+
+  bool IsPointInsideElement( NodeManager const * const nodeManager,
+                             R1Tensor    const & location,
+                             CellBlock   const * subRegion,
+                             localIndex          ei ) const;
+  
   void DebugNodeManager( MeshLevel const & mesh ) const;
 
   void DebugWellElementSubRegions( arrayView1d<integer const> const & wellElemStatus, globalIndex elemOffsetGlobal ) const;
@@ -400,6 +434,9 @@ private:
   /// radius of the well element
   array1d<real64> m_radius;
 
+  /// depth of the local search to match perforation to res elements
+  localIndex m_searchDepth;
+  
 };
 
 } /* namespace geosx */

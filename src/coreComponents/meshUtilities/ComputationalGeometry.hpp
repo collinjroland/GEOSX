@@ -179,12 +179,13 @@ R1Tensor computationalGeometry::GetBoundingBox( localIndex elemIndex,
     R1Tensor const coords = pointCoordinates[id];
 
     for (localIndex d = 0; d < dim; ++d)
-    {  
+    {
+      std::cout << a << " " << d << " " << coords[d] << " " << minCoords[d] << " " << maxCoords[d] << std::endl;
       if (coords[d] < minCoords[d])
       {
         minCoords[d] = coords[d];
       }
-      else if (coords[d] > maxCoords[d])
+      if (coords[d] > maxCoords[d])
       {
         maxCoords[d] = coords[d];
       }
@@ -197,7 +198,8 @@ R1Tensor computationalGeometry::GetBoundingBox( localIndex elemIndex,
   {
     box[d] = maxCoords[d] - minCoords[d];
   }
- 
+  std::cout << box << std::endl;  
+  
   return box;
 }
 

@@ -31,7 +31,8 @@ namespace geosx
 class DomainPartition;
 class MeshLevel;
 class WellElementSubRegion;
-
+class CellBlock;
+  
 /**
  * @class PerforationData
  *
@@ -122,16 +123,10 @@ public:
   arrayView1d<R1Tensor const> const & GetLocation() const { return m_location; }
 
   /**
-   * @brief Getter for perforation transmissibilities
-   * @return list of perforation transmissibilities
+   * @brief Getter for perforation Peaceman index
+   * @return list of perforation Peaceman index
    */
-  arrayView1d<real64> & GetTransmissibility() { return m_transmissibility; }
-
-  /**
-   * @brief Getter for perforation transmissibilities
-   * @return list of perforation transmissibilities
-   */
-  arrayView1d<real64 const> const & getTransmissibility() const { return m_transmissibility; }
+  arrayView1d<real64> & GetWellPeacemanIndex() { return m_wellPeacemanIndex; }
 
   /**
    * @brief Computes the well transmissibility for each local perforation on this well
@@ -139,17 +134,10 @@ public:
    * @param[in] wellElementSubRegion the subRegion corresponding to this well
    * @param[in] permeabilityKey key to access the permeability in the reservoir
    */  
-  void ComputeWellTransmissibility( MeshLevel const & mesh,
-                                    WellElementSubRegion const * const wellElemSubRegion,
-                                    string const & permeabilityKey );
-  
-  /**
-   * @brief Locates connected local mesh elements and resizes current object appropriately
-   * @param[in] mesh the target mesh level
-   * @param[in] wellGeometry the InternalWellGenerator containing the global well topology
-   */
-  void ConnectToMeshElements( MeshLevel const & mesh,
-                              InternalWellGenerator const & wellGeometry );
+  void ComputeWellPeacemanIndex( MeshLevel const & mesh,
+                                 WellElementSubRegion const * const wellElemSubRegion,
+                                 string const & permeabilityKey );
+ 
 
   /**
    * @brief Connects each perforation to a local wellbore element
@@ -170,7 +158,7 @@ public:
     static constexpr auto reservoirElementIndexString     = "reservoirElementIndex";
     static constexpr auto wellElementIndexString          = "wellElementIndex";
     static constexpr auto locationString                  = "location";
-    static constexpr auto transmissibilityString          = "transmissibility";
+    static constexpr auto wellPeacemanIndexString         = "wellPeacemanIndex";
 
     dataRepository::ViewKey numPerforationsGlobal     = { numPerforationsGlobalString };
     dataRepository::ViewKey reservoirElementRegion    = { reservoirElementRegionString };
@@ -178,7 +166,7 @@ public:
     dataRepository::ViewKey reservoirElementIndex     = { reservoirElementIndexString };
     dataRepository::ViewKey wellElementIndex          = { wellElementIndexString };
     dataRepository::ViewKey location                  = { locationString };
-    dataRepository::ViewKey transmissibility          = { transmissibilityString };
+    dataRepository::ViewKey wellPeacemanIndex         = { wellPeacemanIndexString };
 
   } viewKeysPerforationData;
 
@@ -223,7 +211,7 @@ private:
                             real64 & k1, real64 & k2 ) const;
   
   void DebugLocalPerforations() const;
-
+ 
   /// global number of perforations
   globalIndex m_numPerforationsGlobal; 
 
@@ -236,8 +224,8 @@ private:
   /// location of the perforations
   array1d<R1Tensor> m_location;
 
-  /// transmissibility (well index) of the perforations
-  array1d<real64> m_transmissibility;
+  /// well index of the perforations
+  array1d<real64> m_wellPeacemanIndex;
 
 };
 

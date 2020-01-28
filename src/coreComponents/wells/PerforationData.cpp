@@ -43,16 +43,16 @@ PerforationData::PerforationData(string const & name, Group * const parent)
 
   registerWrapper( viewKeyStruct::wellElementIndexString, &m_wellElementIndex, false );
   registerWrapper( viewKeyStruct::locationString, &m_location, false );
-  registerWrapper( viewKeyStruct::transmissibilityString, &m_transmissibility, false );
+  registerWrapper( viewKeyStruct::wellPeacemanIndexString, &m_wellPeacemanIndex, false );
 }
 
 PerforationData::~PerforationData()
 {
 }
 
-void PerforationData::ComputeWellTransmissibility( MeshLevel const & mesh,
-                                                   WellElementSubRegion const * const wellElemSubRegion,
-                                                   string const & permeabilityKey )
+void PerforationData::ComputeWellPeacemanIndex( MeshLevel const & mesh,
+                                                WellElementSubRegion const * const wellElemSubRegion,
+                                                string const & permeabilityKey )
 {
 
   // get the permeability in the domain
@@ -65,7 +65,7 @@ void PerforationData::ComputeWellTransmissibility( MeshLevel const & mesh,
 
     // if the well transmissibility has been read from the XML
     // then skip the computation of the well transmissibility carried out below
-    if (m_transmissibility[iperf] > 0)
+    if (m_wellPeacemanIndex[iperf] > 0)
     {
       continue;
     }
@@ -127,9 +127,9 @@ void PerforationData::ComputeWellTransmissibility( MeshLevel const & mesh,
                     ") in " << getName() );
 
     // compute the well Peaceman index 
-    m_transmissibility[iperf] = 2 * M_PI * kh / std::log(rEq / wellElemRadius[wellElemIndex]);
+    m_wellPeacemanIndex[iperf] = 2 * M_PI * kh / std::log(rEq / wellElemRadius[wellElemIndex]);
     
-    GEOSX_ERROR_IF( m_transmissibility[iperf] <= 0,
+    GEOSX_ERROR_IF( m_wellPeacemanIndex[iperf] <= 0,
                     "The well index is negative or equal to zero in " << getName() );
   }
 }
@@ -156,6 +156,8 @@ void PerforationData::GetReservoirElementDimensions( MeshLevel  const & mesh,
   // dz is computed as vol / (dx * dy)
   dz  = subRegion->getElementVolume()[ei];
   dz /= dx * dy;
+
+  std::cout << "dx = " << dx << " dy = " << dy << " dz = " << dz << std::endl;
   
   GEOSX_ERROR_IF( dx <= 0 || dy <= 0 || dz <= 0 ,
                   "The reservoir element dimensions (dx, dy, and dz) should be positive in " << getName() );
@@ -202,85 +204,7 @@ void PerforationData::DecideWellDirection( R1Tensor const & vecWellElemCenterToP
   }
 }
   
-void PerforationData::ConnectToMeshElements( MeshLevel const & mesh,
-                                             InternalWellGenerator const & wellGeometry )
-{
-  ElementRegionManager const * const elemManager = mesh.getElemManager();
-  NodeManager const * const nodeManager = mesh.getNodeManager();
-
-  ElementRegionManager::ElementViewAccessor<arrayView1d<R1Tensor const>> 
-  elemCenter = elemManager->ConstructViewAccessor<array1d<R1Tensor>, arrayView1d<R1Tensor const>>( ElementSubRegionBase::
-                                                                                                   viewKeyStruct::
-                                                                                                   elementCenterString );
   
-  arrayView1d<R1Tensor const> const & perfCoordsGlobal = wellGeometry.GetPerfCoords();
-  arrayView1d<real64 const>   const & perfTransGlobal  = wellGeometry.GetPerfTransmissibility();
-
-  resize( perfCoordsGlobal.size() );
-  localIndex iperfLocal = 0;
-
-  // loop over all the perforations
-  for ( globalIndex iperfGlobal = 0; iperfGlobal < perfCoordsGlobal.size(); ++iperfGlobal )
-  {
-    R1Tensor const & coords = perfCoordsGlobal[iperfGlobal];
-
-    // TODO actually trace coords
-    // TODO what if a fracture element is located
-
-    // find the closest reservoir element
-    auto ret = minLocOverElemsInMesh( &mesh, [&] ( localIndex const er,
-                                                   localIndex const esr,
-                                                   localIndex const ei ) -> real64
-    {
-      R1Tensor v = coords;
-      v -= elemCenter[er][esr][ei];
-      return v.L2_Norm();
-    } );
-
-    // save the region, subregion and index
-    localIndex const er  = std::get<0>(ret.second);
-    localIndex const esr = std::get<1>(ret.second);
-    localIndex const ei  = std::get<2>(ret.second);
-
-    // a ghostRank check may be inserted if needed
-    // (not needed in the current implementation)
-
-    // check if perforation location is indeed inside the element
-    CellBlock const * const cellBlock = elemManager->GetRegion( er )->GetSubRegion<CellElementSubRegion>( esr );
-    array1d<array1d<localIndex>> faceNodes( cellBlock->numFacesPerElement() );
-
-    for (localIndex kf = 0; kf < cellBlock->numFacesPerElement(); ++kf)
-    {
-      cellBlock->GetFaceNodes( ei, kf, faceNodes[kf] );
-    }
-
-    if (! computationalGeometry::IsPointInsidePolyhedron( nodeManager->referencePosition(), faceNodes, coords ))
-    {
-      continue;
-    }
-
-    // TODO: what happens when the boundary is at the boundary of the MPI domain??
-
-    // now construct the local data
-
-    // store the indices of the mesh element
-    m_toMeshElements.m_toElementRegion   [iperfLocal] = er;
-    m_toMeshElements.m_toElementSubRegion[iperfLocal] = esr;
-    m_toMeshElements.m_toElementIndex    [iperfLocal] = ei;
-    
-    // construct the local transmissibility and location maps
-    m_transmissibility[iperfLocal] = perfTransGlobal[iperfGlobal];
-    m_location[iperfLocal] = coords;
-
-    m_localToGlobalMap[iperfLocal++] = iperfGlobal;
-  }
-
-  // set the size based on the number of perforations matched with local reservoir elements
-  resize( iperfLocal );
-  ConstructGlobalToLocalMap();
-
-}  
- 
 void PerforationData::ConnectToWellElements( InternalWellGenerator const & wellGeometry,
                                              unordered_map<globalIndex,localIndex> const & globalToLocalWellElemMap, 
                                              globalIndex elemOffsetGlobal )
@@ -332,7 +256,7 @@ void PerforationData::DebugLocalPerforations() const
               << std::endl;
     std::cout << "m_location[" << iperf << "] = " << m_location[iperf]
               << std::endl;
-    std::cout << "m_transmissibility[" << iperf << "] = " << m_transmissibility[iperf]
+    std::cout << "m_wellPeacemanIndex[" << iperf << "] = " << m_wellPeacemanIndex[iperf]
               << std::endl;
   }
 }

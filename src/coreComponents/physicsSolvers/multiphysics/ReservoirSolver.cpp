@@ -69,9 +69,9 @@ void ReservoirSolver::InitializePostInitialConditions_PreSubGroups(Group * const
     PerforationData * const perforationData = subRegion->GetPerforationData();
 
     // compute the Peaceman index (if not read from XML)
-    perforationData->ComputeWellTransmissibility( *meshLevel,
-                                                  subRegion,
-                                                  permeabilityKey ); 
+    perforationData->ComputeWellPeacemanIndex( *meshLevel,
+                                               subRegion,
+                                               permeabilityKey ); 
   });
 }
 
