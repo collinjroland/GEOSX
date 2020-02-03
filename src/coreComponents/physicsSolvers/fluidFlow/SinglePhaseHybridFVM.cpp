@@ -581,7 +581,7 @@ void SinglePhaseHybridFVM::AssembleOneSidedMassFluxes( real64 const & dt,
     // add the newly computed flux to the sum
     sumLocalMassFluxes                        += dt * upwMobility[ifaceLoc] * oneSidedVolFlux[ifaceLoc];
     dSumLocalMassFluxes_dElemVars[0]          += dt * upwMobility[ifaceLoc] * dOneSidedVolFlux_dp[ifaceLoc];
-    dSumLocalMassFluxes_dElemVars[ifaceLoc+1] =  dt * dUpwMobility_dp[ifaceLoc] * oneSidedVolFlux[ifaceLoc];
+    dSumLocalMassFluxes_dElemVars[ifaceLoc+1]  = dt * dUpwMobility_dp[ifaceLoc] * oneSidedVolFlux[ifaceLoc];
     for (localIndex jfaceLoc = 0; jfaceLoc < numFacesInElem; ++jfaceLoc)
     {
       dSumLocalMassFluxes_dFaceVars[jfaceLoc] += dt * upwMobility[ifaceLoc] * dOneSidedVolFlux_dfp[ifaceLoc][jfaceLoc];
@@ -647,7 +647,8 @@ void SinglePhaseHybridFVM::AssembleConstraints( arrayView1d<globalIndex const> c
     
     // dof number of this face constraint  
     globalIndex const eqnRowIndex = faceDofNumber[elemToFaces[ifaceLoc]];  
-   
+
+    dFlux_dfp = 0.0;
     for (localIndex jfaceLoc = 0; jfaceLoc < numFacesInElem; ++jfaceLoc)
     {
       dFlux_dfp[jfaceLoc] = dOneSidedVolFlux_dfp[ifaceLoc][jfaceLoc]; 

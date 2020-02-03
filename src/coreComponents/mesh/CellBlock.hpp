@@ -160,7 +160,7 @@ public:
     }
     center /= m_numNodesPerElement;
 
-    if( m_numNodesPerElement == 8 )
+    if( m_numNodesPerElement == 8 && !m_elementTypeString.compare(0, 4, "C3D8") ) 
     {
       m_elementVolume[k] = computationalGeometry::HexVolume(Xlocal);
     }
@@ -168,7 +168,7 @@ public:
     {
       m_elementVolume[k] = computationalGeometry::TetVolume(Xlocal);
     }
-    else if( m_numNodesPerElement == 6)
+    else if( m_numNodesPerElement == 8 && !m_elementTypeString.compare(0, 4, "C3D6") )
     {
       m_elementVolume[k] = computationalGeometry::WedgeVolume(Xlocal);
     }

@@ -99,7 +99,6 @@ void PAMELAMeshGenerator::GenerateMesh( DomainPartition * const domain )
   NodeManager * nodeManager = meshLevel0->getNodeManager();
   CellBlockManager * cellBlockManager = domain->GetGroup<CellBlockManager>( keys::cellManager );
 
-
   // Use the PartMap of PAMELA to get the mesh
   auto polyhedronPartMap = std::get<0>( PAMELA::getPolyhedronPartMap( m_pamelaMesh.get(), 0));
 
@@ -118,6 +117,7 @@ void PAMELAMeshGenerator::GenerateMesh( DomainPartition * const domain )
   {
     zReverseFactor = -1.;
   }
+
   for( auto verticesIterator : *m_pamelaMesh->get_PointCollection()) {
     localIndex vertexLocalIndex = verticesIterator->get_localIndex();
     globalIndex vertexGlobalIndex = verticesIterator->get_globalIndex();
@@ -126,6 +126,7 @@ void PAMELAMeshGenerator::GenerateMesh( DomainPartition * const domain )
     pointData[1] = verticesIterator->get_coordinates().y * m_scale;
     pointData[2] = verticesIterator->get_coordinates().z * m_scale * zReverseFactor;
     nodeManager->m_localToGlobalMap[vertexLocalIndex] = vertexGlobalIndex;
+    
     for( int i = 0; i < 3 ; i++ )
     {
       if( pointData[i] > xMax[i] )
@@ -157,6 +158,7 @@ void PAMELAMeshGenerator::GenerateMesh( DomainPartition * const domain )
       auto cellBlockType = cellBlockPAMELA->ElementType;
       auto cellBlockName = ElementToLabel.at( cellBlockType );
       CellBlock * cellBlock = nullptr;
+
       if( cellBlockName == "HEX" )
       {
         auto nbCells = cellBlockPAMELA->SubCollection.size_owned();
@@ -295,7 +297,7 @@ void PAMELAMeshGenerator::GenerateMesh( DomainPartition * const domain )
             cornerList[3]->get_localIndex();
           cellToVertex[cellLocalIndex][4] =
             cornerList[4]->get_localIndex();
-
+	  
           cellBlock->m_localToGlobalMap[cellLocalIndex] = cellGlobalIndex;
         }
       }
@@ -339,6 +341,7 @@ void PAMELAMeshGenerator::GenerateMesh( DomainPartition * const domain )
       }
     }
   }
+  GEOSX_LOG_RANK_0("Writing into the GEOSX mesh data structure.... Done");
 
 }
 

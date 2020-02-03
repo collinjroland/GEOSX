@@ -593,6 +593,10 @@ void WellElementSubRegion::InitializeLocalSearch( MeshLevel const & mesh,
   erInit  = std::get<0>(ret.second);
   esrInit = std::get<1>(ret.second);
   eiInit  = std::get<2>(ret.second);
+
+  std::cout << resElemCenter[erInit][esrInit][eiInit] << " " << location << std::endl;
+  
+
 }
 
 bool WellElementSubRegion::SearchLocalElements( MeshLevel  const & mesh,

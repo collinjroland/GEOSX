@@ -156,8 +156,6 @@ void PerforationData::GetReservoirElementDimensions( MeshLevel  const & mesh,
   // dz is computed as vol / (dx * dy)
   dz  = subRegion->getElementVolume()[ei];
   dz /= dx * dy;
-
-  std::cout << "dx = " << dx << " dy = " << dy << " dz = " << dz << std::endl;
   
   GEOSX_ERROR_IF( dx <= 0 || dy <= 0 || dz <= 0 ,
                   "The reservoir element dimensions (dx, dy, and dz) should be positive in " << getName() );

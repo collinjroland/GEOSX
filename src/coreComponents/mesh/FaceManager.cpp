@@ -712,7 +712,7 @@ void FaceManager::SortFaceNodes( arrayView1d<R1Tensor const> const & X,
     fc += X[faceNodes[n]];
   }
   fc /= realT(numFaceNodes);
-
+  
   R1Tensor ex, ey, ez;
   // Approximate face normal direction (unscaled)
 
