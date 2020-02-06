@@ -58,8 +58,8 @@ void ReservoirSolver::PostProcessInput()
   m_flowSolver = this->getParent()->GetGroup<FlowSolverBase>( m_flowSolverName );
   m_wellSolver = this->getParent()->GetGroup<WellSolverBase>( m_wellSolverName );
 
-  GEOS_ERROR_IF( m_flowSolver == nullptr, "Flow solver not found or invalid type: " << m_flowSolverName );
-  GEOS_ERROR_IF( m_wellSolver == nullptr, "Well solver not found or invalid type: " << m_wellSolverName );
+  GEOSX_ERROR_IF( m_flowSolver == nullptr, "Flow solver not found or invalid type: " << m_flowSolverName );
+  GEOSX_ERROR_IF( m_wellSolver == nullptr, "Well solver not found or invalid type: " << m_wellSolverName );
 
   m_wellSolver->SetFlowSolverName( m_flowSolverName );
   m_flowSolver->setReservoirWellsCoupling();
@@ -71,6 +71,8 @@ real64 ReservoirSolver::SolverStep( real64 const & time_n,
                                     DomainPartition * domain )
 {
   real64 dt_return = dt;
+
+  SetupSystem( domain, m_dofManager, m_matrix, m_rhs, m_solution );
 
   // setup reservoir and well systems
   ImplicitStepSetup( time_n, dt, domain, m_dofManager, m_matrix, m_rhs, m_solution );
@@ -108,8 +110,6 @@ void ReservoirSolver::ImplicitStepSetup( real64 const & time_n,
                                    rhs,
                                    solution );
 
-  // setup the coupled linear system
-  SetupSystem( domain, dofManager, matrix, rhs, solution );
 }
 
 void ReservoirSolver::SetupDofs( DomainPartition const * const domain,
@@ -134,11 +134,15 @@ void ReservoirSolver::SetupSystem( DomainPartition * const domain,
 
   dofManager.setMesh( domain, 0, 0 );
   SetupDofs( domain, dofManager );
-  dofManager.close();
+  dofManager.reorderByRank();
 
-  dofManager.setSparsityPattern( matrix, "", "", false ); // don't close the matrix
-  dofManager.setVector( rhs );
-  dofManager.setVector( solution );
+  localIndex const numLocalDof = dofManager.numLocalDofs();
+
+  matrix.createWithLocalSize( numLocalDof, numLocalDof, 8, MPI_COMM_GEOSX );
+  rhs.createWithLocalSize( numLocalDof, MPI_COMM_GEOSX );
+  solution.createWithLocalSize( numLocalDof, MPI_COMM_GEOSX );
+
+  dofManager.setSparsityPattern( matrix, false ); // don't close the matrix
 
   // TODO: remove this and just call SolverBase::SetupSystem when DofManager can handle the coupling
 
@@ -222,6 +226,7 @@ void ReservoirSolver::SetupSystem( DomainPartition * const domain,
    } );
 
   matrix.close();
+
 }
 
 void ReservoirSolver::AssembleSystem( real64 const time_n,
@@ -244,22 +249,18 @@ void ReservoirSolver::AssembleSystem( real64 const time_n,
                                 matrix,
                                 rhs );
 
+
   matrix.close();
   rhs.close();
 
-  if( verboseLevel() == 2 )
-  {
-    GEOS_LOG_RANK_0( "After ReservoirSolver::AssembleSystem" );
-    GEOS_LOG_RANK_0("\nJacobian:\n");
-    std::cout << matrix;
-    GEOS_LOG_RANK_0("\nResidual:\n");
-    std::cout << rhs;
-  }
+  // Debug for logLevel >= 2
+  GEOSX_LOG_LEVEL_RANK_0( 2, "After ReservoirSolver::AssembleSystem" );
+  GEOSX_LOG_LEVEL_RANK_0( 2, "\nJacobian:\n" << matrix );
+  GEOSX_LOG_LEVEL_RANK_0( 2, "\nResidual:\n" << rhs );
 
-  if( verboseLevel() >= 3 )
+  if( getLogLevel() >= 3 )
   {
-    SystemSolverParameters * const solverParams = getSystemSolverParameters();
-    integer newtonIter = solverParams->numNewtonIterations();
+    integer newtonIter = m_nonlinearSolverParameters.m_numNewtonIterations;
 
     string filename_mat = "matrix_" + std::to_string( time_n ) + "_" + std::to_string( newtonIter ) + ".mtx";
     matrix.write( filename_mat, true );
@@ -267,10 +268,11 @@ void ReservoirSolver::AssembleSystem( real64 const time_n,
     string filename_rhs = "rhs_" + std::to_string( time_n ) + "_" + std::to_string( newtonIter ) + ".mtx";
     rhs.write( filename_rhs, true );
 
-    GEOS_LOG_RANK_0( "After ReservoirSolver::AssembleSystem" );
-    GEOS_LOG_RANK_0( "Jacobian: written to " << filename_mat );
-    GEOS_LOG_RANK_0( "Residual: written to " << filename_rhs );
+    GEOSX_LOG_RANK_0( "After ReservoirSolver::AssembleSystem" );
+    GEOSX_LOG_RANK_0( "Jacobian: written to " << filename_mat );
+    GEOSX_LOG_RANK_0( "Residual: written to " << filename_rhs );
   }
+
 }
 
 void ReservoirSolver::ApplyBoundaryConditions( real64 const time_n,
@@ -310,12 +312,9 @@ void ReservoirSolver::SolveSystem( DofManager const & dofManager,
 
   SolverBase::SolveSystem( dofManager, matrix, rhs, solution );
 
-  if( verboseLevel() == 2 )
-  {
-    GEOS_LOG_RANK_0("After SinglePhaseFlow::SolveSystem");
-    GEOS_LOG_RANK_0("\nSolution:\n");
-    std::cout << solution;
-  }
+  // Debug for logLevel >= 2
+  GEOSX_LOG_LEVEL_RANK_0( 2, "After ReservoirSolver::SolveSystem" );
+  GEOSX_LOG_LEVEL_RANK_0( 2, "\nSolution:\n" << solution );
 }
 
 bool ReservoirSolver::CheckSystemSolution( DomainPartition const * const domain,

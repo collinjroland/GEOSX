@@ -49,6 +49,8 @@ namespace keys
 using namespace dataRepository;
 using namespace constitutive;
 
+
+  //START_SPHINX_INCLUDE_01
 LaplaceFEM::LaplaceFEM( const std::string& name,
                         Group * const parent ):
   SolverBase( name, parent ),
@@ -62,12 +64,15 @@ LaplaceFEM::LaplaceFEM( const std::string& name,
     setInputFlag(InputFlags::REQUIRED)->
     setDescription("name of field variable");
 }
+  //END_SPHINX_INCLUDE_01
 
 LaplaceFEM::~LaplaceFEM()
 {
   // TODO Auto-generated destructor stub
 }
 
+
+  //START_SPHINX_INCLUDE_02
 void LaplaceFEM::RegisterDataOnMesh( Group * const MeshBodies )
 {
   for( auto & mesh : MeshBodies->GetSubGroups() )
@@ -80,7 +85,9 @@ void LaplaceFEM::RegisterDataOnMesh( Group * const MeshBodies )
       setDescription("Primary field variable");
   }
 }
+  //END_SPHINX_INCLUDE_02
 
+  //START_SPHINX_INCLUDE_03
 void LaplaceFEM::PostProcessInput()
 {
   SolverBase::PostProcessInput();
@@ -101,19 +108,20 @@ void LaplaceFEM::PostProcessInput()
   }
   else
   {
-    GEOS_ERROR("invalid time integration option");
+    GEOSX_ERROR("invalid time integration option");
   }
 
   // Set basic parameters for solver
-  m_linearSolverParameters.verbosity = 0;
-  m_linearSolverParameters.solverType = "gmres";
-  m_linearSolverParameters.krylov.tolerance = 1e-8;
-  m_linearSolverParameters.krylov.maxIterations = 250;
-  m_linearSolverParameters.krylov.maxRestart = 250;
-  m_linearSolverParameters.preconditionerType = "amg";
-  m_linearSolverParameters.amg.smootherType = "gaussSeidel";
-  m_linearSolverParameters.amg.coarseType = "direct";
+  // m_linearSolverParameters.logLevel = 0;
+  // m_linearSolverParameters.solverType = "gmres";
+  // m_linearSolverParameters.krylov.tolerance = 1e-8;
+  // m_linearSolverParameters.krylov.maxIterations = 250;
+  // m_linearSolverParameters.krylov.maxRestart = 250;
+  // m_linearSolverParameters.preconditionerType = "amg";
+  // m_linearSolverParameters.amg.smootherType = "gaussSeidel";
+  // m_linearSolverParameters.amg.coarseType = "direct";
 }
+  //END_SPHINX_INCLUDE_03
 
 real64 LaplaceFEM::SolverStep( real64 const& time_n,
                                real64 const& dt,
@@ -163,10 +171,14 @@ void LaplaceFEM::SetupDofs( DomainPartition const * const GEOSX_UNUSED_ARG( doma
                             DofManager & dofManager ) const
 {
   dofManager.addField( m_fieldName,
-                       DofManager::Location::Node,
-                       DofManager::Connectivity::Elem );
+                       DofManager::Location::Node );
+
+  dofManager.addCoupling( m_fieldName,
+                          m_fieldName,
+                          DofManager::Connectivity::Elem );
 }
 
+//START_SPHINX_INCLUDE_04
 void LaplaceFEM::AssembleSystem( real64 const time_n,
                                  real64 const GEOSX_UNUSED_ARG( dt ),
                                  DomainPartition * const domain,
@@ -251,20 +263,16 @@ void LaplaceFEM::AssembleSystem( real64 const time_n,
   }
   matrix.close();
   rhs.close();
+  //END_SPHINX_INCLUDE_04
 
-  if( verboseLevel() == 2 )
-  {
-    GEOS_LOG_RANK_0( "After LaplaceFEM::AssembleSystem" );
-    GEOS_LOG_RANK_0("\nJacobian:\n");
-    std::cout << matrix;
-    GEOS_LOG_RANK_0("\nResidual:\n");
-    std::cout << rhs;
-  }
+  // Debug for logLevel >= 2
+  GEOSX_LOG_LEVEL_RANK_0( 2, "After LaplaceFEM::AssembleSystem" );
+  GEOSX_LOG_LEVEL_RANK_0( 2, "\nJacobian:\n" << matrix );
+  GEOSX_LOG_LEVEL_RANK_0( 2, "\nResidual:\n" << rhs );
 
-  if( verboseLevel() >= 3 )
+  if( getLogLevel() >= 3 )
   {
-    SystemSolverParameters * const solverParams = getSystemSolverParameters();
-    integer newtonIter = solverParams->numNewtonIterations();
+    integer newtonIter = m_nonlinearSolverParameters.m_numNewtonIterations;
 
     string filename_mat = "matrix_" + std::to_string( time_n ) + "_" + std::to_string( newtonIter ) + ".mtx";
     matrix.write( filename_mat, true );
@@ -272,9 +280,9 @@ void LaplaceFEM::AssembleSystem( real64 const time_n,
     string filename_rhs = "rhs_" + std::to_string( time_n ) + "_" + std::to_string( newtonIter ) + ".mtx";
     rhs.write( filename_rhs, true );
 
-    GEOS_LOG_RANK_0( "After LaplaceFEM::AssembleSystem" );
-    GEOS_LOG_RANK_0( "Jacobian: written to " << filename_mat );
-    GEOS_LOG_RANK_0( "Residual: written to " << filename_rhs );
+    GEOSX_LOG_RANK_0( "After LaplaceFEM::AssembleSystem" );
+    GEOSX_LOG_RANK_0( "Jacobian: written to " << filename_mat );
+    GEOSX_LOG_RANK_0( "Residual: written to " << filename_rhs );
   }
 }
 
@@ -283,17 +291,15 @@ void LaplaceFEM::ApplySystemSolution( DofManager const & dofManager,
                                       real64 const scalingFactor,
                                       DomainPartition * const domain )
 {
-  MeshLevel * const mesh = domain->getMeshBody( 0 )->getMeshLevel( 0 );
-  NodeManager * const nodeManager = mesh->getNodeManager();
+  dofManager.addVectorToField( solution, m_fieldName, m_fieldName, scalingFactor );
 
-  dofManager.copyVectorToField( solution, m_fieldName, scalingFactor, nodeManager, m_fieldName );
-
-  // Syncronize ghost nodes
+  // Synchronize ghost nodes
   std::map<string, string_array> fieldNames;
   fieldNames["node"].push_back( m_fieldName );
 
   CommunicationTools::
-  SynchronizeFields( fieldNames, mesh,
+  SynchronizeFields( fieldNames,
+                     domain->getMeshBody( 0 )->getMeshLevel( 0 ),
                      domain->getReference<array1d<NeighborCommunicator> >( domain->viewKeys.neighbors ) );
 }
 
@@ -306,19 +312,14 @@ void LaplaceFEM::ApplyBoundaryConditions( real64 const time_n,
 {
   ApplyDirichletBC_implicit( time_n + dt, dofManager, *domain, m_matrix, m_rhs );
 
-  if( verboseLevel() == 2 )
-  {
-    GEOS_LOG_RANK_0( "After LaplaceFEM::ApplyBoundaryConditions" );
-    GEOS_LOG_RANK_0("\nJacobian:\n");
-    std::cout << matrix;
-    GEOS_LOG_RANK_0("\nResidual:\n");
-    std::cout << rhs;
-  }
+  // Debug for logLevel >= 2
+  GEOSX_LOG_LEVEL_RANK_0( 2, "After LaplaceFEM::ApplyBoundaryConditions" );
+  GEOSX_LOG_LEVEL_RANK_0( 2, "\nJacobian:\n" << matrix );
+  GEOSX_LOG_LEVEL_RANK_0( 2, "\nResidual:\n" << rhs );
 
-  if( verboseLevel() >= 3 )
+  if( getLogLevel() >= 3 )
   {
-    SystemSolverParameters * const solverParams = getSystemSolverParameters();
-    integer newtonIter = solverParams->numNewtonIterations();
+    integer newtonIter = m_nonlinearSolverParameters.m_numNewtonIterations;
 
     string filename_mat = "matrix_bc_" + std::to_string( time_n ) + "_" + std::to_string( newtonIter ) + ".mtx";
     matrix.write( filename_mat, true );
@@ -326,9 +327,9 @@ void LaplaceFEM::ApplyBoundaryConditions( real64 const time_n,
     string filename_rhs = "rhs_bc_" + std::to_string( time_n ) + "_" + std::to_string( newtonIter ) + ".mtx";
     rhs.write( filename_rhs, true );
 
-    GEOS_LOG_RANK_0( "After LaplaceFEM::ApplyBoundaryConditions" );
-    GEOS_LOG_RANK_0( "Jacobian: written to " << filename_mat );
-    GEOS_LOG_RANK_0( "Residual: written to " << filename_rhs );
+    GEOSX_LOG_RANK_0( "After LaplaceFEM::ApplyBoundaryConditions" );
+    GEOSX_LOG_RANK_0( "Jacobian: written to " << filename_mat );
+    GEOSX_LOG_RANK_0( "Residual: written to " << filename_rhs );
   }
 }
 
@@ -342,12 +343,9 @@ void LaplaceFEM::SolveSystem( DofManager const & dofManager,
 
   SolverBase::SolveSystem( dofManager, matrix, rhs, solution );
 
-  if( verboseLevel() == 2 )
-  {
-    GEOS_LOG_RANK_0("After LaplaceFEM::SolveSystem");
-    GEOS_LOG_RANK_0("\nSolution\n");
-    std::cout << solution;
-  }
+  // Debug for logLevel >= 2
+  GEOSX_LOG_LEVEL_RANK_0( 2, "After LaplaceFEM::SolveSystem" );
+  GEOSX_LOG_LEVEL_RANK_0( 2, "\nSolution:\n" << solution );
 }
 
 void LaplaceFEM::ApplyDirichletBC_implicit( real64 const time,
@@ -356,20 +354,19 @@ void LaplaceFEM::ApplyDirichletBC_implicit( real64 const time,
                                             ParallelMatrix & matrix,
                                             ParallelVector & rhs )
 {
-  FieldSpecificationManager const * const fsManager = FieldSpecificationManager::get();
+  FieldSpecificationManager const & fsManager = FieldSpecificationManager::get();
 
-  fsManager->Apply( time,
-                    &domain,
-                    "nodeManager",
-                    m_fieldName,
-                    [&]( FieldSpecificationBase const * const bc,
-                    string const &,
-                    set<localIndex> const & targetSet,
-                    Group * const targetGroup,
-                    string const GEOSX_UNUSED_ARG( fieldName ) )->void
+  fsManager.Apply( time,
+                   &domain,
+                   "nodeManager",
+                   m_fieldName,
+                   [&]( FieldSpecificationBase const * const bc,
+                        string const &,
+                        set<localIndex> const & targetSet,
+                        Group * const targetGroup,
+                        string const GEOSX_UNUSED_ARG( fieldName ) )->void
   {
     bc->ApplyBoundaryConditionToSystem<FieldSpecificationEqual, LAInterface>( targetSet,
-                                                                              false,
                                                                               time,
                                                                               targetGroup,
                                                                               m_fieldName,
@@ -379,6 +376,7 @@ void LaplaceFEM::ApplyDirichletBC_implicit( real64 const time,
                                                                               rhs );
   });
 }
-
+//START_SPHINX_INCLUDE_00
 REGISTER_CATALOG_ENTRY( SolverBase, LaplaceFEM, std::string const &, Group * const )
+//END_SPHINX_INCLUDE_00
 } /* namespace ANST */

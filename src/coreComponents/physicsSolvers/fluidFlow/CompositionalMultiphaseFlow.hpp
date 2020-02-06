@@ -45,6 +45,7 @@ namespace constitutive
 class MultiFluidBase;
 }
 
+//START_SPHINX_INCLUDE_00
 /**
  * @class CompositionalMultiphaseFlow
  *
@@ -82,9 +83,11 @@ public:
    */
   virtual ~CompositionalMultiphaseFlow() override = default;
 
+//START_SPHINX_INCLUDE_01
+
   /**
-   * @brief name of the node manager in the object catalog
-   * @return string that contains the catalog name to generate a new NodeManager object through the object catalog.
+   * @brief name of the solver in the object catalog
+   * @return string that contains the catalog name to generate a new object through the object catalog.
    */
   static string CatalogName() { return dataRepository::keys::compositionalMultiphaseFlow; }
 
@@ -445,6 +448,15 @@ private:
                                   ParallelMatrix * const matrix,
                                   ParallelVector * const rhs );
 
+
+  void ApplySourceFluxBC( real64 const time,
+			  real64 const dt,
+			  DofManager const * const dofManager,
+			  DomainPartition * const domain,
+			  ParallelMatrix * const matrix,
+			  ParallelVector * const rhs );
+
+  
   /// the max number of fluid phases
   localIndex m_numPhases;
 

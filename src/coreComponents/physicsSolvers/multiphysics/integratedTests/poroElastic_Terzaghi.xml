@@ -1,47 +1,53 @@
 
 <Problem>
 
-  <Solvers
-    gravityVector="0.0, 0.0, -9.81">
+  <Solvers gravityVector="0.0, 0.0, 0.0">
 
+<!-- SPHINX_POROELASTIC_SOLVER -->
     <Poroelastic name="poroSolve" 
                  solidSolverName="lagsolve"
                  fluidSolverName="SinglePhaseFlow"
                  couplingTypeOption="FixedStress"
-                 verboseLevel="1"
+                 logLevel="1"
                  discretization="FE1"
                  targetRegions="{Region2}">
-      <SystemSolverParameters maxIterNewton="40"
-                              verbosityFlag="2"/>
+      <NonlinearSolverParameters name="nlsp"
+                                 newtonMaxIter="40"/>
+      <SystemSolverParameters name="ssp"
+                              logLevel="2"/>
     </Poroelastic>
 
   
     <SolidMechanicsLagrangianSSLE name="lagsolve" 
                                   timeIntegrationOption="QuasiStatic"
-                                  verboseLevel="1"
+                                  logLevel="1"
                                   discretization="FE1"
                                   targetRegions="{Region2}"
                                   solidMaterialName="shale"
                                   >
-      <SystemSolverParameters krylovTol="1.0e-10"
-                              newtonTol="1.0e-6"
-                              maxIterNewton="5"
-                              verbosityFlag="2"/>
+      <NonlinearSolverParameters name="nlsp"
+                                 newtonTol="1.0e-6"
+                                 newtonMaxIter="5"/>
+      <SystemSolverParameters name="ssp"
+                              krylovTol="1.0e-10"
+                              logLevel="2"/>
     </SolidMechanicsLagrangianSSLE>
   
-    <SinglePhaseFlow name="SinglePhaseFlow"
-                     verboseLevel="1"
-                     gravityFlag="1"
+    <SinglePhaseFVM name="SinglePhaseFlow"
+                     logLevel="1"
                      discretization="singlePhaseTPFA"
                      targetRegions="{Region2}"
                      fluidName="water"
                      solidName="shale">
-      <SystemSolverParameters krylovTol="1.0e-10"
-                              newtonTol="1.0e-6"
-                              maxIterNewton="8"/>
-    </SinglePhaseFlow>
+      <NonlinearSolverParameters name="nlsp"
+                                 newtonTol="1.0e-6"
+                                 newtonMaxIter="8"/>
+      <SystemSolverParameters name="ssp"
+                              krylovTol="1.0e-10"/>
+    </SinglePhaseFVM>
   </Solvers>
-  
+<!-- SPHINX_POROELASTIC_SOLVER_END -->  
+
   <Mesh>
     <InternalMesh name="mesh1"
                   elementTypes="{C3D8}" 
@@ -113,6 +119,8 @@
     <CellElementRegion name="Region2" cellBlocks="{cb1}" materialList="{shale, water}" />
   </ElementRegions>
 
+
+<!-- SPHINX_POROELASTIC_CONSTITUTIVE -->
   <Constitutive>
   
     <PoroLinearElasticIsotropic name="shale"
@@ -133,7 +141,7 @@
                                   />
                                   
   </Constitutive>
-
+<!-- SPHINX_POROELASTIC_CONSTITUTIVE_END -->
 
   <FieldSpecifications>
     <FieldSpecification name="permx"
@@ -213,8 +221,6 @@
 
   <Functions>
     <TableFunction     name="timeFunction"         inputVarNames="{time}" coordinates="{1.0, 2.0, 6e4}" values="{1.0, 2.0, 2.0}" />
-    <!--SymbolicFunction  name="spaceFunction"        inputVarNames="ReferencePosition"  variableNames="x y z" expression="sqrt(pow(x,2)+pow(y,2)+pow(z,2))"/>
-    <CompositeFunction name="timeSpaceFunction" variableNames="timeTable1 spaceFunction" expression="timeTable1*spaceFunction"/-->
   </Functions>
 
   <!-- <Partition>

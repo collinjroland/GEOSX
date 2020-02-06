@@ -1,23 +1,24 @@
 
 <Problem>
 
-  <Solvers
-    gravityVector="0.0, 0.0, -9.81">
+  <Solvers>
 
 
     <Reservoir name="reservoirSystem"
                flowSolverName="compositionalMultiphaseFlow"
                wellSolverName="compositionalMultiphaseWell"
-               verboseLevel="1"
+               logLevel="1"
                targetRegions="{Channel,wellRegion1,wellRegion2}">
-      <SystemSolverParameters maxIterNewton="40"
+      <NonlinearSolverParameters name="nlsp"
+                                 newtonTol="1.0e-4"
+                                 newtonMaxIter="40"/>
+      <SystemSolverParameters name="ssp"
                               useDirectSolver="1"
-                              verbosityFlag="0"/>
+                              logLevel="0"/>
     </Reservoir>
     
     <CompositionalMultiphaseFlow name="compositionalMultiphaseFlow"
-                                 verboseLevel="1"
-                                 gravityFlag="1"
+                                 logLevel="1"
                                  discretization="fluidTPFA"
                                  targetRegions="{Channel}"
                                  fluidName="fluid1"
@@ -28,8 +29,7 @@
     </CompositionalMultiphaseFlow>
 
     <CompositionalMultiphaseWell name="compositionalMultiphaseWell"
-                                 verboseLevel="1"
-                                 gravityFlag="1"
+                                 logLevel="1"
                                  targetRegions="{wellRegion1,wellRegion2}"
                                  wellFluidName="fluid1"
                                  wellRelPermName="relperm"
@@ -94,7 +94,7 @@
 
   </Mesh>
 
-  <Events maxTime="5e4">
+  <Events maxTime="2.5e4">
 
     <PeriodicEvent name="outputs"
                    timeFrequency="5e3.0"
@@ -106,7 +106,7 @@
                    target="/Solvers/reservoirSystem" />
 
     <PeriodicEvent name="restarts"
-                   timeFrequency="2.5e4"
+                   timeFrequency="1.5e3"
                    targetExactTimestep="0"
                    target="/Outputs/restartOutput"/>
   </Events>
