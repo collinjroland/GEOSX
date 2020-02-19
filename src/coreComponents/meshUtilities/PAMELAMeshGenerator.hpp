@@ -47,6 +47,7 @@ public:
     constexpr static auto fieldsToImportString = "fieldsToImport";
     constexpr static auto fieldNamesInGEOSXString = "fieldNamesInGEOSX";
     constexpr static auto reverseZString = "reverseZ";
+    constexpr static auto partitioningTypeString = "partitioningType";
   };
 
   virtual void GenerateElementRegions( DomainPartition& domain ) override;
@@ -79,6 +80,9 @@ private:
 
   /// Scale factor that will be applied to the point coordinates
   real64 m_scale;
+
+  /// Partitioning type
+  string m_partitioningType;
 
   string_array m_fieldNamesInGEOSX;
 

@@ -55,6 +55,9 @@ PAMELAMeshGenerator::PAMELAMeshGenerator( string const & name, Group * const par
   registerWrapper(viewKeyStruct::reverseZString, &m_isZReverse, false)->
     setInputFlag(InputFlags::OPTIONAL)->
     setDefaultValue(0)->setDescription("0 : Z coordinate is upward, 1 : Z coordinate is downward");
+  registerWrapper(viewKeyStruct::partitioningTypeString, &m_partitioningType, false)->
+    setInputFlag(InputFlags::REQUIRED)->
+    setDefaultValue("METIS")->setDescription("Set the partitioning type. METIS or TRIVIAL.");
 }
 
 PAMELAMeshGenerator::~PAMELAMeshGenerator()
@@ -68,6 +71,7 @@ void PAMELAMeshGenerator::PostProcessInput()
   m_pamelaMesh =
     std::unique_ptr< PAMELA::Mesh >
       ( PAMELA::MeshFactory::makeMesh( m_filePath ) );
+  m_pamelaMesh->SetPartitioning( m_partitioningType );
   m_pamelaMesh->CreateFacesFromCells();
   m_pamelaMesh->PerformPolyhedronPartitioning( PAMELA::ELEMENTS::FAMILY::POLYGON,
                                                PAMELA::ELEMENTS::FAMILY::POLYGON );
