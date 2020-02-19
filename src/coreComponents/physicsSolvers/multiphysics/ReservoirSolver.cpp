@@ -135,11 +135,15 @@ void ReservoirSolver::SetupSystem( DomainPartition * const domain,
 
   dofManager.setMesh( domain, 0, 0 );
   SetupDofs( domain, dofManager );
-  dofManager.close();
+  dofManager.reorderByRank();
 
-  dofManager.setSparsityPattern( matrix, "", "", false ); // don't close the matrix
-  dofManager.setVector( rhs );
-  dofManager.setVector( solution );
+  localIndex const numLocalDof = dofManager.numLocalDofs();
+
+  matrix.createWithLocalSize( numLocalDof, numLocalDof, 8, MPI_COMM_GEOSX );
+  rhs.createWithLocalSize( numLocalDof, MPI_COMM_GEOSX );
+  solution.createWithLocalSize( numLocalDof, MPI_COMM_GEOSX );
+
+  dofManager.setSparsityPattern( matrix, false ); // don't close the matrix
 
   // TODO: remove this and just call SolverBase::SetupSystem when DofManager can handle the coupling
 
@@ -223,6 +227,7 @@ void ReservoirSolver::SetupSystem( DomainPartition * const domain,
    } );
 
   matrix.close();
+
 }
 
 void ReservoirSolver::AssembleSystem( real64 const time_n,
@@ -246,6 +251,7 @@ void ReservoirSolver::AssembleSystem( real64 const time_n,
                                 matrix,
                                 rhs );
 
+
   matrix.close();
   rhs.close();
 
@@ -268,6 +274,7 @@ void ReservoirSolver::AssembleSystem( real64 const time_n,
     GEOSX_LOG_RANK_0( "Jacobian: written to " << filename_mat );
     GEOSX_LOG_RANK_0( "Residual: written to " << filename_rhs );
   }
+
 }
 
 void ReservoirSolver::ApplyBoundaryConditions( real64 const time_n,

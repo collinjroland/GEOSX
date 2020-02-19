@@ -252,8 +252,8 @@ void TwoPhaseWell::InitializeWells( DomainPartition * const domain )
     PerforationData const * const perforationData = subRegion->GetPerforationData();
 
     // get the info stored on well elements
-    arrayView1d<real64 const> const & wellElemGravDepth =
-      subRegion->getReference<array1d<real64>>( viewKeyStruct::gravityDepthString );
+    arrayView1d<real64 const> const & wellElemGravCoef =
+      subRegion->getReference<array1d<real64>>( viewKeyStruct::gravityCoefString );
 
     // get well primary variables on well elements
     arrayView1d<real64> const & wellElemPressure =
@@ -322,13 +322,13 @@ void TwoPhaseWell::InitializeWells( DomainPartition * const domain )
     avgMixtureDensity /= numPerforationsGlobal;
 
     real64 pressureControl = 0.0;
-    real64 gravDepthControl = 0.0;
+    real64 gravCoefControl = 0.0;
     if (subRegion->IsLocallyOwned())
     {
 
       // get the reference data for this well
       localIndex const iwelemControl = wellControls->GetReferenceWellElementIndex();
-      gravDepthControl = wellElemGravDepth[iwelemControl];
+      gravCoefControl = wellElemGravCoef[iwelemControl];
 
       // 2) Initialize the reference pressure
       real64 const & targetBHP = wellControls->GetTargetBHP();
@@ -352,19 +352,15 @@ void TwoPhaseWell::InitializeWells( DomainPartition * const domain )
 
     // TODO optimize
     MpiWrapper::Broadcast( pressureControl, subRegion->GetTopRank() );
-    MpiWrapper::Broadcast( gravDepthControl, subRegion->GetTopRank() );
+    MpiWrapper::Broadcast( gravCoefControl, subRegion->GetTopRank() );
 
     GEOSX_ERROR_IF( pressureControl <= 0, "Invalid well initialization: negative pressure was found" );
 
     // 3) Estimate the pressures in the well elements using this avgDensity
-    integer const gravityFlag = m_gravityFlag;
-
     forall_in_range( 0, subRegion->size(), GEOSX_LAMBDA ( localIndex const iwelem )
     {
       wellElemPressure[iwelem] = pressureControl
-        + ( gravityFlag 
-          ? avgMixtureDensity * ( wellElemGravDepth[iwelem] - gravDepthControl ) 
-          : 0 );
+        + avgMixtureDensity * ( wellElemGravCoef[iwelem] - gravCoefControl );
     });
 
     // 4) Recompute the pressure-dependent properties
@@ -388,24 +384,27 @@ void TwoPhaseWell::SetupDofs( DomainPartition const * const domain,
 
   dofManager.addField( WellElementDofName(),
                        DofManager::Location::Elem,
-                       DofManager::Connectivity::Node,
                        NumDofPerWellElement(),
                        regions );
+  
+  dofManager.addCoupling( WellElementDofName(),
+                          WellElementDofName(),
+                          DofManager::Connectivity::Node );
 }
 
-void TwoPhaseWell::AssembleFluxTerms( real64 const GEOSX_UNUSED_ARG( time_n ),
-                                      real64 const GEOSX_UNUSED_ARG( dt ),
-                                      DomainPartition const * const GEOSX_UNUSED_ARG( domain ),
-                                      DofManager const * const GEOSX_UNUSED_ARG( dofManager ),
-                                      ParallelMatrix * const GEOSX_UNUSED_ARG( matrix ),
-                                      ParallelVector * const GEOSX_UNUSED_ARG( rhs ) )
+void TwoPhaseWell::AssembleFluxTerms( real64 const GEOSX_UNUSED_PARAM( time_n ),
+                                      real64 const GEOSX_UNUSED_PARAM( dt ),
+                                      DomainPartition const * const GEOSX_UNUSED_PARAM( domain ),
+                                      DofManager const * const GEOSX_UNUSED_PARAM( dofManager ),
+                                      ParallelMatrix * const GEOSX_UNUSED_PARAM( matrix ),
+                                      ParallelVector * const GEOSX_UNUSED_PARAM( rhs ) )
 {
   // nothing to do here
   // in this simple well model, the flow inside the well is not represented  
 }
 
 
-void TwoPhaseWell::AssemblePerforationTerms( real64 const GEOSX_UNUSED_ARG( time_n ),
+void TwoPhaseWell::AssemblePerforationTerms( real64 const GEOSX_UNUSED_PARAM( time_n ),
                                              real64 const dt,
                                              DomainPartition const * const domain,
                                              DofManager const * const dofManager,
@@ -545,8 +544,8 @@ void TwoPhaseWell::FormPressureRelations( DomainPartition const * const domain,
     arrayView1d<integer const> const & wellElemGhostRank =
       subRegion->getReference<array1d<integer>>( ObjectManagerBase::viewKeyStruct::ghostRankString );
 
-    arrayView1d<real64 const> const & wellElemGravDepth =
-      subRegion->getReference<array1d<real64>>( viewKeyStruct::gravityDepthString );
+    arrayView1d<real64 const> const & wellElemGravCoef =
+      subRegion->getReference<array1d<real64>>( viewKeyStruct::gravityCoefString );
 
     arrayView1d<localIndex const> const & nextWellElemIndex =
       subRegion->getReference<array1d<localIndex>>( WellElementSubRegion::viewKeyStruct::nextWellElementIndexString );
@@ -587,7 +586,7 @@ void TwoPhaseWell::FormPressureRelations( DomainPartition const * const domain,
                                                + wellElemMixtureDensity[iwelemNext] );
 
         // compute depth diff times acceleration
-        real64 const gravD = ( wellElemGravDepth[iwelemNext] - wellElemGravDepth[iwelem] );
+        real64 const gravD = ( wellElemGravCoef[iwelemNext] - wellElemGravCoef[iwelem] );
 
         // compute the current pressure in the two well elements
         real64 const pressureCurrent = wellElemPressure[iwelem]     + dWellElemPressure[iwelem];
@@ -625,19 +624,19 @@ void TwoPhaseWell::FormPressureRelations( DomainPartition const * const domain,
   
 }
 
-void TwoPhaseWell::AssembleVolumeBalanceTerms( real64 const GEOSX_UNUSED_ARG( time_n ),
-                                               real64 const GEOSX_UNUSED_ARG( dt ),
-                                               DomainPartition const * const GEOSX_UNUSED_ARG( domain ),
-                                               DofManager const * const GEOSX_UNUSED_ARG( dofManager ),
-                                               ParallelMatrix * const GEOSX_UNUSED_ARG( matrix ),
-                                               ParallelVector * const GEOSX_UNUSED_ARG( rhs ) )
+void TwoPhaseWell::AssembleVolumeBalanceTerms( real64 const GEOSX_UNUSED_PARAM( time_n ),
+                                               real64 const GEOSX_UNUSED_PARAM( dt ),
+                                               DomainPartition const * const GEOSX_UNUSED_PARAM( domain ),
+                                               DofManager const * const GEOSX_UNUSED_PARAM( dofManager ),
+                                               ParallelMatrix * const GEOSX_UNUSED_PARAM( matrix ),
+                                               ParallelVector * const GEOSX_UNUSED_PARAM( rhs ) )
 {
   // nothing to do here
   // in this simple well model, the flow inside the well is not represented
 }
 
 
-void TwoPhaseWell::CheckWellControlSwitch( DomainPartition * const GEOSX_UNUSED_ARG( domain ) )
+void TwoPhaseWell::CheckWellControlSwitch( DomainPartition * const GEOSX_UNUSED_PARAM( domain ) )
 {
   // this is not implemented yet
   // TODO: implement this  
@@ -748,21 +747,14 @@ TwoPhaseWell::ApplySystemSolution( DofManager const & dofManager,
                                    real64 const scalingFactor,
                                    DomainPartition * const domain )
 {
-  MeshLevel * const meshLevel = domain->getMeshBodies()->GetGroup<MeshBody>(0)->getMeshLevel(0);
-  ElementRegionManager * const elemManager = meshLevel->getElemManager();
-
   // update properties: lagged mixture density
   UpdateStateAll( domain );
   
-  elemManager->forElementSubRegions<WellElementSubRegion>( [&]( WellElementSubRegion * const subRegion )
-  {
-    dofManager.addVectorToField( solution,
-                                 WellElementDofName(),
-                                 scalingFactor,
-                                 subRegion,
-                                 viewKeyStruct::deltaPressureString,
-                                 0, 1 );
-  });
+  dofManager.addVectorToField( solution,
+                               WellElementDofName(),
+                               viewKeyStruct::deltaPressureString,
+                               scalingFactor,
+                               0, 1 );
 
   std::map<string, string_array > fieldNames;
   fieldNames["elems"].push_back( viewKeyStruct::deltaPressureString );
@@ -843,8 +835,8 @@ void TwoPhaseWell::ComputeAllPerforationRates( WellElementSubRegion const * cons
   PerforationData const * const perforationData = subRegion->GetPerforationData();
 
   // get depth
-  arrayView1d<real64 const> const & wellElemGravDepth =
-    subRegion->getReference<array1d<real64>>( viewKeyStruct::gravityDepthString );
+  arrayView1d<real64 const> const & wellElemGravCoef =
+    subRegion->getReference<array1d<real64>>( viewKeyStruct::gravityCoefString );
     
   // get well primary variables on well elements
   arrayView1d<real64 const> const & wellElemPressure =
@@ -857,8 +849,8 @@ void TwoPhaseWell::ComputeAllPerforationRates( WellElementSubRegion const * cons
     subRegion->getReference<array1d<real64>>( viewKeyStruct::mixtureDensityString );
 
   // get well variables on perforations
-  arrayView1d<real64 const> const & perfGravDepth =
-    perforationData->getReference<array1d<real64>>( viewKeyStruct::gravityDepthString );
+  arrayView1d<real64 const> const & perfGravCoef =
+    perforationData->getReference<array1d<real64>>( viewKeyStruct::gravityCoefString );
 
   arrayView1d<localIndex const> const & perfWellElemIndex =
     perforationData->getReference<array1d<localIndex>>( PerforationData::viewKeyStruct::wellElementIndexString );
@@ -920,11 +912,8 @@ void TwoPhaseWell::ComputeAllPerforationRates( WellElementSubRegion const * cons
     dPressure_dp[SubRegionTag::WELL] = 1.0;
     multiplier[SubRegionTag::WELL] = -1.0;
 
-    if (m_gravityFlag)
-    {
-      real64 const gravD = ( perfGravDepth[iperf] - wellElemGravDepth[iwelem] );
-      pressure[SubRegionTag::WELL]  += wellElemMixtureDensity[iwelem] * gravD;
-    }
+    real64 const gravD = ( perfGravCoef[iperf] - wellElemGravCoef[iwelem] );
+    pressure[SubRegionTag::WELL]  += wellElemMixtureDensity[iwelem] * gravD;
 
     // get transmissibility at the interface
     real64 const trans = perfTransmissibility[iperf]; 
@@ -1087,8 +1076,8 @@ void TwoPhaseWell::FormControlEquation( DomainPartition const * const domain,
 }
 
 
-void TwoPhaseWell::ImplicitStepComplete( real64 const & GEOSX_UNUSED_ARG( time ),
-                                         real64 const & GEOSX_UNUSED_ARG( dt ),
+void TwoPhaseWell::ImplicitStepComplete( real64 const & GEOSX_UNUSED_PARAM( time ),
+                                         real64 const & GEOSX_UNUSED_PARAM( dt ),
                                          DomainPartition * const domain )
 {
   MeshLevel const * const meshLevel = domain->getMeshBodies()->GetGroup<MeshBody>(0)->getMeshLevel(0);
@@ -1118,7 +1107,7 @@ void TwoPhaseWell::ImplicitStepComplete( real64 const & GEOSX_UNUSED_ARG( time )
   });
 }
 
-void TwoPhaseWell::RecordWellData( WellElementSubRegion const * const GEOSX_UNUSED_ARG( subRegion ) )
+void TwoPhaseWell::RecordWellData( WellElementSubRegion const * const GEOSX_UNUSED_PARAM( subRegion ) )
 {
 }
 

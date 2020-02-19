@@ -93,7 +93,7 @@ public:
    */
   real64_array EvaluateStats( dataRepository::Group const * const group,
                               real64 const time,
-                              set<localIndex> const & set) const;
+                              SortedArray<localIndex> const & set) const;
 
 protected:
   string_array m_inputVarNames;
@@ -123,6 +123,7 @@ void FunctionBase::EvaluateT( dataRepository::Group const * const group,
   GEOSX_ERROR_IF(numVars > 4, "Number of variables is: " << numVars);
 
   localIndex varSize[4];
+  int timeVar[4] = {1,1,1,1};
   for( auto varIndex=0 ; varIndex<numVars ; ++varIndex )
   {
     string const & varName = inputVarNames[varIndex];
@@ -131,6 +132,7 @@ void FunctionBase::EvaluateT( dataRepository::Group const * const group,
     {
       input_ptrs[varIndex] = &time;
       varSize[varIndex] = 1;
+      timeVar[varIndex] = 0;
     }
     else
     {
@@ -159,7 +161,7 @@ void FunctionBase::EvaluateT( dataRepository::Group const * const group,
     {
       for( int b=0 ; b<varSize[a] ; ++b )
       {
-        input[c] = input_ptrs[a][index*varSize[a]+b];
+        input[c] = input_ptrs[a][(index*varSize[a]+b)*timeVar[a]];
         ++c;
       }
     }
