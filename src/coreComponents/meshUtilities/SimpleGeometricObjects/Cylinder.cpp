@@ -50,7 +50,7 @@ Cylinder::~Cylinder()
 {}
 
 
-bool Cylinder::IsCoordInObject( const R1Tensor& coord ) const
+bool Cylinder::IsCoordInObjectSub( const R1Tensor& coord ) const
 {
   bool rval = false;
 

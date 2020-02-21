@@ -106,7 +106,7 @@ void Box::PostProcessInput()
 //
 // }
 
-bool Box::IsCoordInObject( const R1Tensor& coord ) const
+bool Box::IsCoordInObjectSub( const R1Tensor& coord ) const
 {
   bool rval = false;
   if (std::fabs(m_strikeAngle) < 1e-20)

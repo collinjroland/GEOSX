@@ -55,7 +55,7 @@ void ThickPlane::PostProcessInput()
 }
 
 
-bool ThickPlane::IsCoordInObject( const R1Tensor& coord ) const
+bool ThickPlane::IsCoordInObjectSub( const R1Tensor& coord ) const
 {
   real64 normalDistance = 0.0;
   for(int i=0; i<3; ++i)

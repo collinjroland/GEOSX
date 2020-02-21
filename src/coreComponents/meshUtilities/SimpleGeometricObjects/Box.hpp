@@ -35,7 +35,7 @@ public:
 
   static string CatalogName() { return "Box"; }
 
-  bool IsCoordInObject( const R1Tensor& coord ) const override final;
+  bool IsCoordInObjectSub( const R1Tensor& coord ) const override final;
 
 protected:
   virtual void PostProcessInput() override final;

@@ -48,10 +48,24 @@ public:
 
   static string CatalogName() { return "SimpleGeometricObjectBase"; }
 
-  virtual bool IsCoordInObject( const R1Tensor& coord ) const = 0;
+  virtual bool IsCoordInObjectSub( const R1Tensor& coord ) const = 0;
+
+  bool IsCoordInObject( const R1Tensor& coord )
+  {
+    return IsCoordInObjectSub( coord ) ^ (m_invertNodeset > 0);
+  }
 
   using CatalogInterface = dataRepository::CatalogInterface< SimpleGeometricObjectBase, std::string const &, Group * const >;
   static CatalogInterface::CatalogType& GetCatalog();
+
+private:
+  integer m_invertNodeset;
+
+  struct viewKeyStruct
+  {
+    static constexpr auto invertString = "invert";
+    dataRepository::ViewKey invert = { "invert" };
+  } viewKeys;
 
 };
 
