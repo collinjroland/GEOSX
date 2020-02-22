@@ -3,6 +3,7 @@
 ========= ======== ======== ===================================================================== 
 Name      Type     Default  Description                                                           
 ========= ======== ======== ===================================================================== 
+invert    integer  0        If equal to 1, the nodeset will be inverted.                          
 name      string   required A name is required for any non-unique nodes                           
 normal    R1Tensor required Normal (n_x,n_y,n_z) to the plane (will be normalized automatically)  
 origin    R1Tensor required Origin point (x,y,z) of the plane (basically, any point on the plane) 

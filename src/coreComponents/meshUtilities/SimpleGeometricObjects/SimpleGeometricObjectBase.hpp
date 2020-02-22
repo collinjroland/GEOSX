@@ -50,7 +50,7 @@ public:
 
   virtual bool IsCoordInObjectSub( const R1Tensor& coord ) const = 0;
 
-  bool IsCoordInObject( const R1Tensor& coord )
+  bool IsCoordInObject( const R1Tensor& coord ) const
   {
     return IsCoordInObjectSub( coord ) ^ (m_invertNodeset > 0);
   }

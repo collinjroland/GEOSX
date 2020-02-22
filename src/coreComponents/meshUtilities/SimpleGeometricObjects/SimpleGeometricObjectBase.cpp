@@ -31,7 +31,7 @@ SimpleGeometricObjectBase::SimpleGeometricObjectBase( std::string const & name,
 
   registerWrapper( viewKeyStruct::invertString, &m_invertNodeset, false )->
     setApplyDefaultValue(0)->
-    setInputFlag(InputFlags::Optional)->
+    setInputFlag(dataRepository::InputFlags::OPTIONAL)->
     setDescription("If equal to 1, the nodeset will be inverted.");
 }
 

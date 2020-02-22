@@ -460,6 +460,8 @@
 		<xsd:attribute name="name" type="string" use="required" />
 	</xsd:complexType>
 	<xsd:complexType name="BoxType">
+		<!--invert => If equal to 1, the nodeset will be inverted.-->
+		<xsd:attribute name="invert" type="integer" default="0" />
 		<!--strike => The strike angle of the box-->
 		<xsd:attribute name="strike" type="real64" default="-90" />
 		<!--xMax => Maximum (x,y,z) coordinates of the box-->
@@ -470,6 +472,8 @@
 		<xsd:attribute name="name" type="string" use="required" />
 	</xsd:complexType>
 	<xsd:complexType name="CylinderType">
+		<!--invert => If equal to 1, the nodeset will be inverted.-->
+		<xsd:attribute name="invert" type="integer" default="0" />
 		<!--point1 => Center point of one (upper or lower) face of the cylinder-->
 		<xsd:attribute name="point1" type="R1Tensor" use="required" />
 		<!--point2 => Center point of the other face of the cylinder-->
@@ -480,6 +484,8 @@
 		<xsd:attribute name="name" type="string" use="required" />
 	</xsd:complexType>
 	<xsd:complexType name="ThickPlaneType">
+		<!--invert => If equal to 1, the nodeset will be inverted.-->
+		<xsd:attribute name="invert" type="integer" default="0" />
 		<!--normal => Normal (n_x,n_y,n_z) to the plane (will be normalized automatically)-->
 		<xsd:attribute name="normal" type="R1Tensor" use="required" />
 		<!--origin => Origin point (x,y,z) of the plane (basically, any point on the plane)-->
