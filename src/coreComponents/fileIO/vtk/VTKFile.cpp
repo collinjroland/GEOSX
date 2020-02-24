@@ -53,6 +53,7 @@ static std::unordered_map< std::type_index, string > geosxToVTKTypeMap =
   {std::type_index( typeid( real64_array ) ), "Float64"},
   {std::type_index( typeid( real64_array2d ) ), "Float64"},
   {std::type_index( typeid( real64_array3d ) ), "Float64"},
+  {std::type_index( typeid( array2d< real64, nodes::TOTAL_DISPLACEMENT_PERM > ) ), "Float64"},
   {std::type_index( typeid( real32_array ) ), "Float32"},
   {std::type_index( typeid( real32_array2d ) ), "Float32"},
   {std::type_index( typeid( real32_array3d ) ), "Float32"},
@@ -735,11 +736,15 @@ void VTKFile::Write( double const timeStep,
        std::type_info const & typeID = wrapper->get_typeid();
        if( !geosxToVTKTypeMap.count( typeID ) )
          continue;
+       std::cout << fieldName << std::endl;
        int dimension = 0;
        rtTypes::TypeIDs fieldType = rtTypes::typeID(wrapper->get_typeid());
        if( fieldType == rtTypes::TypeIDs::r1_array_id )
        {
          dimension = 3;
+       }
+       else if( fieldType == rtTypes::TypeIDs::real64_array2d_id )
+       {
        }
        else
        {
