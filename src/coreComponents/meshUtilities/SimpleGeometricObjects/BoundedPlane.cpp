@@ -102,7 +102,7 @@ void BoundedPlane::findRectangleLimits()
   }
 }
 
-bool BoundedPlane::IsCoordInObject( const R1Tensor& coord ) const
+bool BoundedPlane::IsCoordInObjectSub( const R1Tensor& coord ) const
 {
   bool isInside = true;
 

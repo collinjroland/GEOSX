@@ -34,7 +34,7 @@ public:
 
   static string CatalogName() { return "BoundedPlane"; }
 
-  bool IsCoordInObject( const R1Tensor& coord ) const override final;
+  bool IsCoordInObjectSub( const R1Tensor& coord ) const override final;
 
   void findRectangleLimits();
 

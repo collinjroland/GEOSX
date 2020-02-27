@@ -448,6 +448,8 @@
 	<xsd:complexType name="BoundedPlaneType">
 		<!--dimensions => Length and width of the bounded plane-->
 		<xsd:attribute name="dimensions" type="real64_array" use="required" />
+		<!--invert => If equal to 1, the nodeset will be inverted.-->
+		<xsd:attribute name="invert" type="integer" default="0" />
 		<!--lengthVector => Tangent vector defining the orthonormal basis along with the normal.-->
 		<xsd:attribute name="lengthVector" type="R1Tensor" use="required" />
 		<!--normal => Normal (n_x,n_y,n_z) to the plane (will be normalized automatically)-->
