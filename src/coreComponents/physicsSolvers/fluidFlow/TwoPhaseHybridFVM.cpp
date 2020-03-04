@@ -40,7 +40,7 @@ TwoPhaseHybridFVM::TwoPhaseHybridFVM( const std::string& name,
   m_elemDofKey(""),  
   m_areaRelTol(1e-8),
   m_minTotalMob(1e-8),
-  m_ipType(InnerProductType::QUASI_TPFA),
+  m_ipType(InnerProductType::TPFA),
   m_orthonormalizeWithSVD(false)
 {
   // two elem-centered dof per elem
@@ -919,7 +919,7 @@ void TwoPhaseHybridFVM::AssembleOneSidedMassFluxes( real64 const & dt,
       real64 const dLocalViscCoef_dpNeighbor = dt * dViscousCoef_dp[ifaceLoc][ip][1];      
       real64 const dLocalViscCoef_dSLoc      = dt * dViscousCoef_dS[ifaceLoc][ip][0];
       real64 const dLocalViscCoef_dSNeighbor = dt * dViscousCoef_dS[ifaceLoc][ip][1];      
-      
+
       real64 const localGravCoef             = dt * gravCoef[ifaceLoc][ip];
       real64 const dLocalGravCoef_dpLoc      = dt * dGravCoef_dp[ifaceLoc][ip][0];
       real64 const dLocalGravCoef_dpNeighbor = dt * dGravCoef_dp[ifaceLoc][ip][1];

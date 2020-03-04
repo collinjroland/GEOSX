@@ -148,8 +148,8 @@ void TwoPhaseWell::UpdateState( WellElementSubRegion * const subRegion )
 {
   localIndex constexpr numPhases = TwoPhaseBase::NUM_PHASES;  
 
-  ElementRegionManager::ElementViewAccessor<arrayView1d<real64>>  const & resSat  = m_resWettingPhaseSat;
-  ElementRegionManager::ElementViewAccessor<arrayView1d<real64>>  const & dResSat = m_deltaResWettingPhaseSat;   
+  //ElementRegionManager::ElementViewAccessor<arrayView1d<real64>>  const & resSat  = m_resWettingPhaseSat;
+  //ElementRegionManager::ElementViewAccessor<arrayView1d<real64>>  const & dResSat = m_deltaResWettingPhaseSat;   
   ElementRegionManager::MaterialViewAccessor<arrayView3d<real64>> const & resPhaseDens = m_resPhaseDens;
 
   // connectivity info 
@@ -190,8 +190,8 @@ void TwoPhaseWell::UpdateState( WellElementSubRegion * const subRegion )
 
     // TODO: use perforation rates here instead of saturation 
     stackArray1d<real64, numPhases> weights( numPhases );
-    weights[m_ipw]  = resSat[er][esr][ei] + dResSat[er][esr][ei];
-    weights[m_ipnw] = 1 - weights[m_ipw];
+    weights[m_ipw]  = 0.5;//resSat[er][esr][ei] + dResSat[er][esr][ei];
+    weights[m_ipnw] = 0.5;//1 - weights[m_ipw];
     real64 sumWeights = 0;
     real64 mixtureDensity  = 0;
     // increment the average mixture density
@@ -490,6 +490,9 @@ void TwoPhaseWell::AssemblePerforationTerms( real64 const GEOSX_UNUSED_PARAM( ti
       dofColIndices[1] = resDofNumber[er][esr][ei] + dS;        
       // column index on well side
       dofColIndices[2] = elemOffset;
+     
+      // eqn row index for the well
+      eqnRowIndices[2] = elemOffset; 
       
       for (localIndex ip = 0; ip < numPhases; ++ip)
       { 
@@ -501,7 +504,7 @@ void TwoPhaseWell::AssemblePerforationTerms( real64 const GEOSX_UNUSED_PARAM( ti
 
         // populate local flux vector and derivatives
         localPerf[rowId]  =  dt * perfRate[iperf][ip];
-
+	  
         localPerfJacobian[rowId][0] = dt * dPerfRate_dPres[iperf][ip][SubRegionTag::RES];
         localPerfJacobian[rowId][1] = dt * dPerfRate_dResSat[iperf][ip];
         localPerfJacobian[rowId][2] = dt * dPerfRate_dPres[iperf][ip][SubRegionTag::WELL];
@@ -927,7 +930,8 @@ void TwoPhaseWell::ComputeAllPerforationRates( WellElementSubRegion const * cons
       potDiff        += multiplier[i] * trans * pressure[i]; // pressure = pres + dPres
       dPotDiff_dp[i] += multiplier[i] * trans * dPressure_dp[i];
     }
-      
+    
+    
     // 3) upwinding
 
     // TODO: double-check what follows. 
@@ -982,9 +986,9 @@ void TwoPhaseWell::ComputeAllPerforationRates( WellElementSubRegion const * cons
       // compute the injected phase flux and derivatives using upstream cell mobility
       perfRate[iperf][ipinj] = phaseCoef * potDiff;
       dPerfRate_dPres[iperf][ipinj][SubRegionTag::RES] = dPhaseCoef_dp * potDiff
-                                                       + phaseCoef * dPotDiff_dp[SubRegionTag::RES];
+        + phaseCoef * dPotDiff_dp[SubRegionTag::RES];
       dPerfRate_dPres[iperf][ipinj][SubRegionTag::WELL] = phaseCoef * dPotDiff_dp[SubRegionTag::WELL];
-      dPerfRate_dResSat[iperf][ipinj] = dPhaseCoef_dS * potDiff;
+	dPerfRate_dResSat[iperf][ipinj] = dPhaseCoef_dS * potDiff;
 
       // set the perforation rate of the other phase to zero
       perfRate[iperf][ipother] = 0;

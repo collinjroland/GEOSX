@@ -122,8 +122,8 @@ void TwoPhaseBase::UpdateFluidModel(Group * const dataGroup ) const
     fluid->getReference<array3d<real64>>( MultiFluidBase::viewKeyStruct::dPhaseViscosity_dPressureString );
 
   real64 const p_ref       = 1e6;
-  real64 const c_w         = 1e-12;
-  real64 const c_nw        = 1e-9;
+  real64 const c_w         = 0;//1e-12;
+  real64 const c_nw        = 0;//1e-9;
   real64 const dens_ref_w  = 1000;
   real64 const dens_ref_nw = 800;
   real64 const visc_ref_w  = 0.001;
@@ -300,8 +300,8 @@ void TwoPhaseBase::InitializePreSubGroups( Group * const rootGroup )
                   "TwoPhaseBase: the accepted phase names are water, oil, and gas");
 
   // fill the array mapping the phase index to the row offset in the residual 
-  m_phaseToRow.resize(NUM_PHASES); 
-  m_phaseToRow[m_ipw]    = RowOffset::WETTING;
+  m_phaseToRow.resize(NUM_PHASES);
+  m_phaseToRow[m_ipw]  = RowOffset::WETTING;
   m_phaseToRow[m_ipnw] = RowOffset::NONWETTING;
 
   for( auto & mesh : domain->getMeshBodies()->GetSubGroups() )
