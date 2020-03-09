@@ -26,7 +26,8 @@ using namespace dataRepository;
 SourceFluxBoundaryCondition::SourceFluxBoundaryCondition( string const & name, Group *const parent ):
   FieldSpecificationBase( name, parent )
 {
-  m_normalizeBySetSize = true;
+  // m_normalizeBySetSize = true;
+  m_normalizeBySetSizeInput->setApplyDefaultValue(1);
 }
 
 SourceFluxBoundaryCondition::~SourceFluxBoundaryCondition()

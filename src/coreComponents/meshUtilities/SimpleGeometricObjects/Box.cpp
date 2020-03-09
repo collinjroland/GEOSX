@@ -61,6 +61,8 @@ Box::~Box()
 
 void Box::PostProcessInput()
 {
+  SimpleGeometricObjectBase::PostProcessInput();
+
   m_boxCenter = m_min;
   m_boxCenter += m_max;
   m_boxCenter *= 0.5;

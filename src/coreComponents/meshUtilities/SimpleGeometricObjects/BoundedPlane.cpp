@@ -57,6 +57,8 @@ BoundedPlane::~BoundedPlane()
 
 void BoundedPlane::PostProcessInput()
 {
+  SimpleGeometricObjectBase::PostProcessInput();
+
   // Make sure that you have an orthonormal basis.
   m_normal.Normalize();
   m_lengthVector.Normalize();

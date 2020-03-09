@@ -48,18 +48,21 @@ public:
 
   static string CatalogName() { return "SimpleGeometricObjectBase"; }
 
+  virtual void PostProcessInput() override;
+
   virtual bool IsCoordInObjectSub( const R1Tensor& coord ) const = 0;
 
   bool IsCoordInObject( const R1Tensor& coord ) const
   {
-    return IsCoordInObjectSub( coord ) ^ (m_invertNodeset > 0);
+    return IsCoordInObjectSub( coord ) ^ m_invertNodeset;
   }
 
   using CatalogInterface = dataRepository::CatalogInterface< SimpleGeometricObjectBase, std::string const &, Group * const >;
   static CatalogInterface::CatalogType& GetCatalog();
 
 private:
-  integer m_invertNodeset;
+  bool m_invertNodeset;
+  integer m_invertNodesetInput;
 
   struct viewKeyStruct
   {

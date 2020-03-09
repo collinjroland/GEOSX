@@ -25,7 +25,8 @@ using namespace dataRepository;
 
 FieldSpecificationBase::FieldSpecificationBase( string const & name, Group * parent ):
   Group( name, parent ),
-  m_normalizeBySetSize(false)
+  m_normalizeBySetSize(false),
+  m_normalizeBySetSizeInput(0)
 {
   setInputFlags(InputFlags::OPTIONAL_NONUNIQUE);
 
@@ -80,6 +81,10 @@ FieldSpecificationBase::FieldSpecificationBase( string const & name, Group * par
     setInputFlag(InputFlags::OPTIONAL)->
     setDescription("time at which bc will stop being applied");
 
+  registerWrapper( viewKeyStruct::normalizeBySetSize, &m_normalizeBySetSizeInput, 0 )->
+    setApplyDefaultValue(0)->
+    setInputFlag(InputFlags::OPTIONAL)->
+    setDescription("flag to normalize bc by set size (0=no, 1=yes)");
 }
 
 
@@ -96,7 +101,12 @@ FieldSpecificationBase::GetCatalog()
 
   
 void FieldSpecificationBase::PostProcessInput()
-{}
+{
+  if ( m_normalizeBySetSizeInput == 1 )
+  {
+    m_normalizeBySetSize = true;
+  }
+}
 
 
 

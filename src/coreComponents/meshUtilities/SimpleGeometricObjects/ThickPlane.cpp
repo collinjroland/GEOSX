@@ -47,6 +47,8 @@ ThickPlane::~ThickPlane()
 
 void ThickPlane::PostProcessInput()
 {
+  SimpleGeometricObjectBase::PostProcessInput();
+
   m_thickness *= 0.5; // actually store the half-thickness
   GEOSX_ERROR_IF(m_thickness <= 0, "Error: the plane appears to have zero or negative thickness");
 

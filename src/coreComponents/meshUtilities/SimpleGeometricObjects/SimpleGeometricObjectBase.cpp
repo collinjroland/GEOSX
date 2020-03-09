@@ -25,14 +25,15 @@ namespace geosx
 SimpleGeometricObjectBase::SimpleGeometricObjectBase( std::string const & name,
                                                       Group * const parent ):
   Group( name, parent ),
-  m_invertNodeset(0)
+  m_invertNodeset(false),
+  m_invertNodesetInput(0)
 {
   setInputFlags(dataRepository::InputFlags::OPTIONAL_NONUNIQUE);
 
-  registerWrapper( viewKeyStruct::invertString, &m_invertNodeset, false )->
+  registerWrapper( viewKeyStruct::invertString, &m_invertNodesetInput, false )->
     setApplyDefaultValue(0)->
     setInputFlag(dataRepository::InputFlags::OPTIONAL)->
-    setDescription("If equal to 1, the nodeset will be inverted.");
+    setDescription("flag to invert nodeset (0=no, 1=yes)");
 }
 
 
@@ -45,6 +46,16 @@ SimpleGeometricObjectBase::CatalogInterface::CatalogType& SimpleGeometricObjectB
   static SimpleGeometricObjectBase::CatalogInterface::CatalogType catalog;
   return catalog;
 }
+
+
+void SimpleGeometricObjectBase::PostProcessInput()
+{
+  if ( m_invertNodesetInput == 1 )
+  {
+    m_invertNodeset = true;
+  }
+}
+
 
 
 //
