@@ -27,7 +27,8 @@ SourceFluxBoundaryCondition::SourceFluxBoundaryCondition( string const & name, G
   FieldSpecificationBase( name, parent )
 {
   // m_normalizeBySetSize = true;
-  m_normalizeBySetSizeInput->setApplyDefaultValue(1);
+  
+  getWrapper<integer>( viewKeyStruct::normalizeBySetSize )->setApplyDefaultValue(1);
 }
 
 SourceFluxBoundaryCondition::~SourceFluxBoundaryCondition()

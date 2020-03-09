@@ -12,6 +12,7 @@ fieldName              string                Name of field that boundary conditi
 functionName           string                Name of function that specifies variation of the BC            
 initialCondition       integer      0        BC is applied as an initial condition.                         
 name                   string       required A name is required for any non-unique nodes                    
+normalizeBySetSize     integer      1        flag to normalize bc by set size (0=no, 1=yes)                 
 objectPath             string                Path to the target field                                       
 scale                  real64       0        Scale factor for value of BC.                                  
 setNames               string_array required Name of sets that boundary condition is applied to.            

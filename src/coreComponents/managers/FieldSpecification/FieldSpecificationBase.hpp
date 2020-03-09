@@ -228,6 +228,7 @@ public:
     constexpr static auto initialConditionString = "initialCondition";
     constexpr static auto beginTimeString = "beginTime";
     constexpr static auto endTimeString = "endTime";
+    constexpr static auto fluxBoundaryConditionString = "fluxBoundaryConditionString";
     constexpr static auto normalizeBySetSize = "normalizeBySetSize";
   } viewKeys;
 
@@ -318,6 +319,9 @@ protected:
 
   /// The flag used to decide if the BC value is normalized by the size of the set on which it is applied
   bool m_normalizeBySetSize;
+
+  /// User input for turning on/off BC normalization
+  integer m_normalizeBySetSizeInput;
   
 private:
 
@@ -361,9 +365,6 @@ private:
 
   /// The factor used to normalize the boundary flux by the size of the set it is applied to
   //real64 m_setSizeScalingFactor;
-
-  /// User input for turning on/off BC normalization
-  integer m_normalizeBySetSizeInput;
 
 };
 

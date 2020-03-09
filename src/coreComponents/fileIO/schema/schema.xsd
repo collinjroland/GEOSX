@@ -331,6 +331,8 @@
 		<xsd:attribute name="functionName" type="string" default="" />
 		<!--initialCondition => BC is applied as an initial condition.-->
 		<xsd:attribute name="initialCondition" type="integer" default="0" />
+		<!--normalizeBySetSize => flag to normalize bc by set size (0=no, 1=yes)-->
+		<xsd:attribute name="normalizeBySetSize" type="integer" default="0" />
 		<!--objectPath => Path to the target field-->
 		<xsd:attribute name="objectPath" type="string" default="" />
 		<!--scale => Scale factor for value of BC.-->
@@ -357,6 +359,8 @@
 		<xsd:attribute name="functionName" type="string" default="" />
 		<!--initialCondition => BC is applied as an initial condition.-->
 		<xsd:attribute name="initialCondition" type="integer" default="0" />
+		<!--normalizeBySetSize => flag to normalize bc by set size (0=no, 1=yes)-->
+		<xsd:attribute name="normalizeBySetSize" type="integer" default="0" />
 		<!--objectPath => Path to the target field-->
 		<xsd:attribute name="objectPath" type="string" default="" />
 		<!--scale => Scale factor for value of BC.-->
@@ -383,6 +387,8 @@
 		<xsd:attribute name="functionName" type="string" default="" />
 		<!--initialCondition => BC is applied as an initial condition.-->
 		<xsd:attribute name="initialCondition" type="integer" default="0" />
+		<!--normalizeBySetSize => flag to normalize bc by set size (0=no, 1=yes)-->
+		<xsd:attribute name="normalizeBySetSize" type="integer" default="1" />
 		<!--objectPath => Path to the target field-->
 		<xsd:attribute name="objectPath" type="string" default="" />
 		<!--scale => Scale factor for value of BC.-->
@@ -448,7 +454,7 @@
 	<xsd:complexType name="BoundedPlaneType">
 		<!--dimensions => Length and width of the bounded plane-->
 		<xsd:attribute name="dimensions" type="real64_array" use="required" />
-		<!--invert => If equal to 1, the nodeset will be inverted.-->
+		<!--invert => flag to invert nodeset (0=no, 1=yes)-->
 		<xsd:attribute name="invert" type="integer" default="0" />
 		<!--lengthVector => Tangent vector defining the orthonormal basis along with the normal.-->
 		<xsd:attribute name="lengthVector" type="R1Tensor" use="required" />
@@ -462,7 +468,7 @@
 		<xsd:attribute name="name" type="string" use="required" />
 	</xsd:complexType>
 	<xsd:complexType name="BoxType">
-		<!--invert => If equal to 1, the nodeset will be inverted.-->
+		<!--invert => flag to invert nodeset (0=no, 1=yes)-->
 		<xsd:attribute name="invert" type="integer" default="0" />
 		<!--strike => The strike angle of the box-->
 		<xsd:attribute name="strike" type="real64" default="-90" />
@@ -474,7 +480,7 @@
 		<xsd:attribute name="name" type="string" use="required" />
 	</xsd:complexType>
 	<xsd:complexType name="CylinderType">
-		<!--invert => If equal to 1, the nodeset will be inverted.-->
+		<!--invert => flag to invert nodeset (0=no, 1=yes)-->
 		<xsd:attribute name="invert" type="integer" default="0" />
 		<!--point1 => Center point of one (upper or lower) face of the cylinder-->
 		<xsd:attribute name="point1" type="R1Tensor" use="required" />
@@ -486,7 +492,7 @@
 		<xsd:attribute name="name" type="string" use="required" />
 	</xsd:complexType>
 	<xsd:complexType name="ThickPlaneType">
-		<!--invert => If equal to 1, the nodeset will be inverted.-->
+		<!--invert => flag to invert nodeset (0=no, 1=yes)-->
 		<xsd:attribute name="invert" type="integer" default="0" />
 		<!--normal => Normal (n_x,n_y,n_z) to the plane (will be normalized automatically)-->
 		<xsd:attribute name="normal" type="R1Tensor" use="required" />

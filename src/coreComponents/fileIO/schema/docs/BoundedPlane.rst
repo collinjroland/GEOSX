@@ -4,7 +4,7 @@
 Name         Type         Default  Description                                                           
 ============ ============ ======== ===================================================================== 
 dimensions   real64_array required Length and width of the bounded plane                                 
-invert       integer      0        If equal to 1, the nodeset will be inverted.                          
+invert       integer      0        flag to invert nodeset (0=no, 1=yes)                                  
 lengthVector R1Tensor     required Tangent vector defining the orthonormal basis along with the normal.  
 name         string       required A name is required for any non-unique nodes                           
 normal       R1Tensor     required Normal (n_x,n_y,n_z) to the plane (will be normalized automatically)  
