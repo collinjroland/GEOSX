@@ -32,6 +32,8 @@ SolverBase::SolverBase( std::string const & name,
   m_cflFactor(),
   m_maxStableDt{ 1e99 },
   m_nextDt( 1e99 ),
+  m_dtCutFactor(0.5),
+  m_dtGrowFactor(2.0),
   m_dofManager( name ),
   m_nonlinearSolverParameters( groupKeyStruct::nonlinearSolverParametersString, this )
 {
@@ -73,6 +75,16 @@ SolverBase::SolverBase( std::string const & name,
     setApplyDefaultValue( 1e99 )->
     setInputFlag( InputFlags::OPTIONAL )->
     setDescription( "Initial time-step value required by the solver to the event manager." );
+
+  registerWrapper( viewKeyStruct::dtCutFactorString, &m_dtCutFactor, false )->
+    setApplyDefaultValue( 0.5 )->
+    setInputFlag( InputFlags::OPTIONAL )->
+    setDescription( "If requested, cut the timestep by this factor." );
+
+  registerWrapper( viewKeyStruct::dtGrowFactorString, &m_dtGrowFactor, false )->
+    setApplyDefaultValue( 2.0 )->
+    setInputFlag( InputFlags::OPTIONAL )->
+    setDescription( "If requested, grow the timestep by this factor." );
 }
 
 SolverBase::~SolverBase()
@@ -238,15 +250,15 @@ void SolverBase::SetNextDtBasedOnNewtonIter( real64 const & currentDt,
 
   if( newtonIter <  iterIncLimit )
   {
-    // Easy convergence, let's double the time-step.
-    nextDt = 2*currentDt;
-    GEOSX_LOG_LEVEL_RANK_0( 1, getName() << ": Newton solver converged in less than " << iterIncLimit << " iterations, time-step required will be doubled." );
+    // Easy convergence, let's increase the time-step (default = double).
+    nextDt = currentDt * m_dtGrowFactor;
+    GEOSX_LOG_LEVEL_RANK_0( 1, getName() << ": Newton solver converged in less than " << iterIncLimit << " iterations, time-step required will be increased." );
   }
   else if( newtonIter >  iterCutLimit )
   {
-    // Tough convergence let us make the time-step smaller!
-    nextDt = currentDt/2;
-    GEOSX_LOG_LEVEL_RANK_0( 1, getName() << ": Newton solver converged in more than " << iterCutLimit << " iterations, time-step required will be halved." );
+    // Tough convergence let us make the time-step smaller (default = half)!
+    nextDt = currentDt * m_dtCutFactor;
+    GEOSX_LOG_LEVEL_RANK_0( 1, getName() << ": Newton solver converged in more than " << iterCutLimit << " iterations, time-step required will be cut." );
   }
   else
   {

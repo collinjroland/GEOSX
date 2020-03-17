@@ -500,6 +500,8 @@ public:
     constexpr static auto cflFactorString = "cflFactor";
     constexpr static auto initialDtString = "initialDt";
     constexpr static auto maxStableDtString = "maxStableDt";
+    constexpr static auto dtCutFactorString = "dtCutFactor";
+    constexpr static auto dtGrowFactorString = "dtGrowFactor";
     static constexpr auto discretizationString = "discretization";
     constexpr static auto targetRegionsString = "targetRegions";
 
@@ -584,6 +586,8 @@ protected:
   real64 m_cflFactor;
   real64 m_maxStableDt;
   real64 m_nextDt;
+  real64 m_dtCutFactor;
+  real64 m_dtGrowFactor;
 
   /// name of the FV discretization object in the data repository
   string m_discretizationName;
