@@ -883,7 +883,7 @@ void CompositionalMultiphaseWell::AssembleVolumeBalanceTerms( real64 const GEOSX
 
       // get equation/dof indices
       globalIndex const offset = wellElemDofNumber[iwelem];
-      localIndex const volBalRowOffset = RowOffset::MASSBAL + NC;
+      localIndex const volBalRowOffset = RowOffset::VOLBAL;
       globalIndex const localVolBalanceEqnIndex = offset + volBalRowOffset;
       for( localIndex jdof = 0; jdof < welemNDOF; ++jdof )
       {
@@ -1474,7 +1474,7 @@ void CompositionalMultiphaseWell::FormPressureRelations( DomainPartition const *
         globalIndex const offsetNext    = wellElemDofNumber[iwelemNext];
         globalIndex const offsetCurrent = wellElemDofNumber[iwelem];
 
-        globalIndex const eqnRowIndex = offsetCurrent + RowOffset::CONTROL;
+        globalIndex const eqnRowIndex = offsetCurrent + RowOffset::MASSBAL + NC;
 
         dofColIndices[localDofIndexPresNext]    = offsetNext    + ColOffset::DPRES;
         dofColIndices[localDofIndexPresCurrent] = offsetCurrent + ColOffset::DPRES;
@@ -1521,6 +1521,8 @@ void CompositionalMultiphaseWell::FormControlEquation( DomainPartition const * c
 
   string const wellDofKey = dofManager->getKey( WellElementDofName() );
 
+  localIndex const NC = m_numComponents;
+  
   // loop over the wells
   elemManager->forElementSubRegions< WellElementSubRegion >( [&]( WellElementSubRegion const & subRegion )
   {
@@ -1565,7 +1567,7 @@ void CompositionalMultiphaseWell::FormControlEquation( DomainPartition const * c
       real64 const dControlEqn_dPres = normalizer;
 
       globalIndex const elemOffset  = wellElemDofNumber[iwelemControl];
-      globalIndex const eqnRowIndex = elemOffset + RowOffset::CONTROL;
+      globalIndex const eqnRowIndex = elemOffset + RowOffset::MASSBAL + NC;
       globalIndex const dofColIndex = elemOffset + ColOffset::DPRES;
 
       rhs->add( &eqnRowIndex,
@@ -1580,7 +1582,6 @@ void CompositionalMultiphaseWell::FormControlEquation( DomainPartition const * c
     }
     else if( control == WellControls::Control::LIQUIDRATE ) // liquid rate control
     {
-      localIndex const NC = m_numComponents;
 
       // get a reference to the primary variables on well elements
       arrayView1d< real64 const > const & connRate  =
@@ -1603,7 +1604,7 @@ void CompositionalMultiphaseWell::FormControlEquation( DomainPartition const * c
 
       globalIndex const elemOffset  = wellElemDofNumber[iwelemControl];
       localIndex const dRateColOffset = ColOffset::DCOMP + NC;
-      globalIndex const eqnRowIndex = elemOffset + RowOffset::CONTROL;
+      globalIndex const eqnRowIndex = elemOffset + RowOffset::MASSBAL + NC;
       globalIndex const dofColIndex = elemOffset + dRateColOffset;
 
       rhs->add( &eqnRowIndex,

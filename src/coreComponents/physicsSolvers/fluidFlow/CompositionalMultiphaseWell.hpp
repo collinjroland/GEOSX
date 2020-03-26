@@ -56,7 +56,7 @@ public:
   // define the row offset of the residual equations
   struct RowOffset
   {
-    static constexpr integer CONTROL = 0;
+    static constexpr integer VOLBAL  = 0;
     static constexpr integer MASSBAL = 1;
   };
 
