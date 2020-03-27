@@ -218,7 +218,11 @@ void SolverBase::Execute( real64 const time_n,
     if( dtRemaining > 0.0 )
     {
       SetNextDt( dtAccepted, nextDt );
-      nextDt = std::min( nextDt, dtRemaining );
+
+      // Note: While sub-stepping, the solver may sometimes oscilate between stable/unstable
+      // attempts.  To address this, limit the growth of timesteps
+      // nextDt = std::min( nextDt, dtRemaining );
+      nextDt = std::min( dtAccepted, std::min( nextDt, dtRemaining ) );
     }
 
     if( getLogLevel() >= 1 && dtRemaining > 0.0 )
