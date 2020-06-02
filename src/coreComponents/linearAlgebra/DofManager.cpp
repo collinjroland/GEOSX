@@ -128,6 +128,48 @@ localIndex DofManager::numLocalDofs( string const & fieldName ) const
   }
 }
 
+array1d< localIndex > DofManager::getLocalDofComponentLabels( ) const
+{
+  array1d< localIndex > ret;
+
+  if ( m_fields.size() > 0 )
+  {
+    localIndex numTotalLocalDof = 0;
+    for (const auto & field : m_fields)
+    {
+      numTotalLocalDof += field.numLocalDof;
+    }
+
+    ret.resize( numTotalLocalDof );
+
+    localIndex firstLabel = 0;
+    localIndex istr= 0;
+    localIndex iend;
+    localIndex numComp;
+    for (const auto & field : m_fields)
+    {
+      numComp = field.numComponents;
+      array1d< integer > vectorLabels( numComp );
+      for ( localIndex k = 0; k < numComp; ++k )
+      {
+        vectorLabels[k] = k + firstLabel;
+      }
+      iend = istr + field.numLocalDof;
+      for ( localIndex i = istr; i < iend; i += numComp )
+      {
+        for ( integer k = 0; k < numComp; ++k )
+        {
+          ret[i+k] = vectorLabels[k];
+        }
+      }
+      istr += iend;
+      firstLabel += numComp;
+    }
+  }
+
+  return ret;
+}
+
 localIndex DofManager::rankOffset( string const & fieldName ) const
 {
   if( !fieldName.empty() )

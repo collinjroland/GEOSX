@@ -314,6 +314,15 @@ public:
    */
   localIndex numLocalDofs( string const & fieldName = "" ) const;
 
+
+  /**
+   * @brief Return an array of size numLocalDof containing unique integer labels associated
+   * to every component in the field descriptions.
+   *
+   * @return array1d of integer labels
+   */
+  array1d< localIndex > getLocalDofComponentLabels( ) const;
+
   /**
    * @brief Return the sum of local dofs across all previous processors w.r.t. to the calling one for
    * the specified field.
