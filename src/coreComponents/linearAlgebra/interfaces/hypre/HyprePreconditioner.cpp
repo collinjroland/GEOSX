@@ -230,6 +230,12 @@ void HyprePreconditioner::compute( Matrix const & mat )
   GEOSX_LAI_CHECK_ERROR( m_functions->setup( m_precond, mat.unwrapped(), nullptr, nullptr ) );
 }
 
+//void HyprePreconditioner::compute( Matrix const & mat )
+//{
+//  PreconditionerBase::compute( mat );
+//  GEOSX_LAI_CHECK_ERROR( m_functions->setup( m_precond, mat.unwrapped(), nullptr, nullptr ) );
+//}
+
 void HyprePreconditioner::apply( Vector const & src,
                                  Vector & dst ) const
 {

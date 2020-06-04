@@ -316,12 +316,12 @@ public:
 
 
   /**
-   * @brief Return an array of size numLocalDof containing unique integer labels associated
-   * to every component in the field descriptions.
+   * @brief Computes an array of size equal to sum of all field local number of dofs containing
+   * unique integer labels associated to components stored in the field descriptions.
    *
    * @return array1d of integer labels
    */
-  array1d< localIndex > getLocalDofComponentLabels( ) const;
+  array1d< localIndex > getLocalDofComponentLabels() const;
 
   /**
    * @brief Return the sum of local dofs across all previous processors w.r.t. to the calling one for
@@ -333,11 +333,13 @@ public:
   localIndex rankOffset( string const & fieldName = "" ) const;
 
   /**
-   * @brief Get the the number of components in a field.
-   * @param fieldName name of the field
-   * @return the number of dof components
+   * @brief Get the number of components in a field. If field argument is empty, return
+   * the total number of components across fields.
+   *
+   * @param [in] fieldName Optional string the name of the field.
+   * @return     the number of dof components
    */
-  localIndex numComponents( string const & fieldName ) const;
+  localIndex numComponents( string const & fieldName = "" ) const;
 
   /**
    * @brief Get the local number of support points on this processor.

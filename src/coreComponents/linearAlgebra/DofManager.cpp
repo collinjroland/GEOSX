@@ -128,17 +128,13 @@ localIndex DofManager::numLocalDofs( string const & fieldName ) const
   }
 }
 
-array1d< localIndex > DofManager::getLocalDofComponentLabels( ) const
+array1d< localIndex > DofManager::getLocalDofComponentLabels() const
 {
   array1d< localIndex > ret;
-
   if ( m_fields.size() > 0 )
   {
-    localIndex numTotalLocalDof = 0;
-    for (const auto & field : m_fields)
-    {
-      numTotalLocalDof += field.numLocalDof;
-    }
+    localIndex numTotalLocalDof = std::accumulate( m_fields.begin(), m_fields.end(), 0,
+                                                   []( localIndex const & n, FieldDescription const & f ) { return n + f.numLocalDof; } );
 
     ret.resize( numTotalLocalDof );
 
@@ -166,7 +162,6 @@ array1d< localIndex > DofManager::getLocalDofComponentLabels( ) const
       firstLabel += numComp;
     }
   }
-
   return ret;
 }
 
@@ -185,7 +180,16 @@ localIndex DofManager::rankOffset( string const & fieldName ) const
 
 localIndex DofManager::numComponents( string const & fieldName ) const
 {
-  return m_fields[getFieldIndex( fieldName )].numComponents;
+  if( !fieldName.empty() )
+  {
+    return m_fields[getFieldIndex( fieldName )].numComponents;
+  }
+  else
+  {
+    return std::accumulate( m_fields.begin(), m_fields.end(), 0,
+                            []( globalIndex const & n, FieldDescription const & f ) { return n + f.numComponents; } );
+  }
+
 }
 
 localIndex DofManager::numLocalSupport( string const & fieldName ) const

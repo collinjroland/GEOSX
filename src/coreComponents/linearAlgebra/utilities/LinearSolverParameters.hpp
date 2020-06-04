@@ -75,6 +75,14 @@ public:
   }
   amg;                                      //!< Algebraic Multigrid (AMG) parameters
 
+  /// Multigrid reduction parameters
+  struct MGR
+  {
+    integer numUnknownLabels;
+    string  strategy;
+  }
+  mgr;
+
   /// Incomplete factorization parameters
   struct ILU
   {

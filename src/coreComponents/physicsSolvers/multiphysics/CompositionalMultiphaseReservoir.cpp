@@ -261,7 +261,18 @@ void CompositionalMultiphaseReservoir::AssembleCouplingTerms( real64 const GEOSX
 
 }
 
-
+void CompositionalMultiphaseReservoir::SetupSystem( DomainPartition * const domain,
+                                                    DofManager & dofManager,
+                                                    ParallelMatrix & matrix,
+                                                    ParallelVector & rhs,
+                                                    ParallelVector & solution )
+{
+  ReservoirSolverBase::SetupSystem( domain, dofManager, matrix, rhs, solution );
+  if( getLinearSolverParameters().preconditionerType == "mgr" )
+  {
+    getLinearSolverParameters().mgr.strategy = "CompositionalMultiphaseReservoir";
+  }
+}
 
 REGISTER_CATALOG_ENTRY( SolverBase, CompositionalMultiphaseReservoir, std::string const &, Group * const )
 
