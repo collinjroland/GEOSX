@@ -52,6 +52,10 @@ HyprePreconditioner::HyprePreconditioner( LinearSolverParameters params )
     {
       createAMG();
     }
+    if( m_parameters.preconditionerType == "mgr" )
+    {
+      createMGR();
+    }
     else if( m_parameters.preconditionerType == "iluk" )
     {
       createILU();
@@ -199,6 +203,81 @@ void HyprePreconditioner::createILU()
   m_functions->setup = HYPRE_ILUSetup;
   m_functions->apply = HYPRE_ILUSolve;
   m_functions->destroy = HYPRE_ILUDestroy;
+}
+
+void HyprePreconditioner::createMGR()
+{
+  GEOSX_LAI_CHECK_ERROR( HYPRE_MGRCreate( &m_precond ) );
+
+  // Hypre's parameters to use MGR as a preconditioner
+  GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetTol( m_precond, 0.0 ) );
+  GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetMaxIter( m_precond, 1 ) );
+  GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetPrintLevel( m_precond, toHYPRE_Int( m_parameters.logLevel ) ) );;
+
+//  // Set maximum number of multigrid levels (default 25)
+//  GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetMaxLevels( m_precond, toHYPRE_Int( m_parameters.amg.maxLevels ) ) );
+//
+//  // Set type of cycle (1: V-cycle (default); 2: W-cycle)
+//  GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetCycleType( m_precond, getHypreAMGCycleType( m_parameters.amg.cycleType ) ) );
+//
+//  // Set smoother to be used (other options available, see hypre's documentation)
+//  // (default "gaussSeidel", i.e. local symmetric Gauss-Seidel)
+//  if( m_parameters.amg.smootherType.substr( 0, 3 ) == "ilu" )
+//  {
+//    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetSmoothType( m_precond, 5 ) );
+//    GEOSX_LAI_CHECK_ERROR( HYPRE_ILUSetType( m_precond, 0 ) );
+//    if( m_parameters.amg.smootherType == "ilu1" )
+//    {
+//      GEOSX_LAI_CHECK_ERROR( HYPRE_ILUSetLevelOfFill( m_precond, 1 ) );
+//    }
+//  }
+//  else
+//  {
+//    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetRelaxType( m_precond, getHypreAMGRelaxationType( m_parameters.amg.smootherType ) ) );
+//
+//    if( m_parameters.amg.smootherType == "chebyshev" )
+//    {
+//      // Set order for Chebyshev smoother valid options 1, 2 (default), 3, 4)
+//      if( ( 0 < m_parameters.amg.numSweeps ) && ( m_parameters.amg.numSweeps < 5 ) )
+//      {
+//        GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetChebyOrder( m_precond, toHYPRE_Int( m_parameters.amg.numSweeps ) ) );
+//      }
+//    }
+//  }
+//
+//  // Set coarsest level solver
+//  // (by default for coarsest grid size above 5,000 superlu_dist is used)
+//  GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetDSLUThreshold( m_precond, 5000 ) );
+//  if( m_parameters.amg.coarseType == "direct" )
+//  {
+//    GEOSX_LAI_CHECK_ERROR( hypre_BoomerAMGSetCycleRelaxType( m_precond, 9, 3 ) );
+//  }
+//
+//  // Set the number of sweeps
+//  if( m_parameters.amg.preOrPostSmoothing == "both" )
+//  {
+//    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetNumSweeps( m_precond, toHYPRE_Int( m_parameters.amg.numSweeps ) ) );
+//  }
+//  else if( m_parameters.amg.preOrPostSmoothing == "pre" )
+//  {
+//    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetCycleNumSweeps( m_precond, toHYPRE_Int( m_parameters.amg.numSweeps ), 1 ) );
+//    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetCycleNumSweeps( m_precond, 0, 2 ) );
+//  }
+//  else if( m_parameters.amg.preOrPostSmoothing == "post" )
+//  {
+//    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetCycleNumSweeps( m_precond, 0, 1 ) );
+//    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetCycleNumSweeps( m_precond, toHYPRE_Int( m_parameters.amg.numSweeps ), 2 ) );
+//  }
+//
+//  // Set strength of connection
+//  if( m_parameters.amg.threshold > 0.0 )
+//  {
+//    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetStrongThreshold( m_precond, m_parameters.amg.threshold ) );
+//  }
+
+  m_functions->setup = HYPRE_MGRSetup;
+  m_functions->apply = HYPRE_MGRSolve;
+  m_functions->destroy = HYPRE_MGRDestroy;
 }
 
 void HyprePreconditioner::createILUT()

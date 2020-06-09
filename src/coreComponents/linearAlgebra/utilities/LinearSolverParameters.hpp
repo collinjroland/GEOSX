@@ -78,7 +78,6 @@ public:
   /// Multigrid reduction parameters
   struct MGR
   {
-    integer numUnknownLabels;
     string  strategy;
   }
   mgr;

@@ -109,6 +109,8 @@ private:
 
   void createAMG();
 
+  void createMGR();
+
   void createILU();
 
   void createILUT();
