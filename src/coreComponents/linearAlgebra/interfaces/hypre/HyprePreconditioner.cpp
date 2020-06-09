@@ -48,11 +48,11 @@ HyprePreconditioner::HyprePreconditioner( LinearSolverParameters params )
       m_functions->setup = (HYPRE_PtrToParSolverFcn) HYPRE_ParCSRDiagScaleSetup;
       m_functions->apply = (HYPRE_PtrToParSolverFcn) HYPRE_ParCSRDiagScale;
     }
-    if( m_parameters.preconditionerType == "amg" )
+    else if( m_parameters.preconditionerType == "amg" )
     {
       createAMG();
     }
-    if( m_parameters.preconditionerType == "mgr" )
+    else if( m_parameters.preconditionerType == "mgr" )
     {
       createMGR();
     }
@@ -307,6 +307,17 @@ void HyprePreconditioner::compute( Matrix const & mat )
 {
   PreconditionerBase::compute( mat );
   GEOSX_LAI_CHECK_ERROR( m_functions->setup( m_precond, mat.unwrapped(), nullptr, nullptr ) );
+}
+
+void HyprePreconditioner::compute( Matrix const & mat,
+                                   DofManager const & dofManager )
+{
+  GEOSX_LOG_RANK_VAR( m_parameters.preconditionerType );
+  GEOSX_LOG_RANK_VAR( m_parameters.mgr.strategy );
+
+  GEOSX_UNUSED_VAR( dofManager );
+  GEOSX_ERROR( "Stop execution" );
+  HyprePreconditioner::compute( mat );
 }
 
 //void HyprePreconditioner::compute( Matrix const & mat )
