@@ -69,7 +69,7 @@ public:
 
 private:
 
-  LinearSolverParameters const & m_parameters;
+  LinearSolverParameters m_parameters;
   LinearSolverResult m_result;
 
   void solve_direct( HypreMatrix & mat,

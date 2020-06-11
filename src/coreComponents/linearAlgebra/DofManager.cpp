@@ -128,6 +128,20 @@ localIndex DofManager::numLocalDofs( string const & fieldName ) const
   }
 }
 
+array1d< localIndex > DofManager::numLocalDofsPerField() const
+{
+  array1d< localIndex > ret;
+  localIndex numFields = m_fields.size();
+  if( numFields > 0 )
+  {
+    for(const auto & field : m_fields)
+    {
+      ret.push_back( field.numLocalDof );
+    }
+  }
+  return ret;
+}
+
 array1d< localIndex > DofManager::getLocalDofComponentLabels() const
 {
   array1d< localIndex > ret;
@@ -190,6 +204,20 @@ localIndex DofManager::numComponents( string const & fieldName ) const
                             []( globalIndex const & n, FieldDescription const & f ) { return n + f.numComponents; } );
   }
 
+}
+
+array1d< localIndex > DofManager::numComponentsPerField() const
+{
+  array1d< localIndex > ret;
+  localIndex numFields = m_fields.size();
+  if( numFields > 0 )
+  {
+    for(const auto & field : m_fields)
+    {
+      ret.push_back( field.numComponents );
+    }
+  }
+  return ret;
 }
 
 localIndex DofManager::numLocalSupport( string const & fieldName ) const

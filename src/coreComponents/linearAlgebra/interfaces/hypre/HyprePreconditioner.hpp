@@ -80,14 +80,6 @@ public:
    */
   virtual void compute( Matrix const & mat ) override;
 
-  /**
-   * @brief Compute the preconditioner from a matrix
-   * @param mat the matrix to precondition
-   * @param dofManager the Degree-of-Freedom manager associated with matrix
-   */
-  virtual void compute( Matrix const & mat,
-                        DofManager const & dofManager ) override;
-
   using PreconditionerBase< HypreInterface >::compute;
 
   /**

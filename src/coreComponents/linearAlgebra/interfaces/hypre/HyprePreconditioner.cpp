@@ -17,6 +17,7 @@
  */
 
 #include "HyprePreconditioner.hpp"
+#include "HypreMGRStrategies.hpp"
 
 #include "linearAlgebra/interfaces/hypre/HypreUtils.hpp"
 #include "linearAlgebra/utilities/LinearSolverParameters.hpp"
@@ -214,67 +215,59 @@ void HyprePreconditioner::createMGR()
   GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetMaxIter( m_precond, 1 ) );
   GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetPrintLevel( m_precond, toHYPRE_Int( m_parameters.logLevel ) ) );;
 
-//  // Set maximum number of multigrid levels (default 25)
-//  GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetMaxLevels( m_precond, toHYPRE_Int( m_parameters.amg.maxLevels ) ) );
-//
-//  // Set type of cycle (1: V-cycle (default); 2: W-cycle)
-//  GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetCycleType( m_precond, getHypreAMGCycleType( m_parameters.amg.cycleType ) ) );
-//
-//  // Set smoother to be used (other options available, see hypre's documentation)
-//  // (default "gaussSeidel", i.e. local symmetric Gauss-Seidel)
-//  if( m_parameters.amg.smootherType.substr( 0, 3 ) == "ilu" )
-//  {
-//    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetSmoothType( m_precond, 5 ) );
-//    GEOSX_LAI_CHECK_ERROR( HYPRE_ILUSetType( m_precond, 0 ) );
-//    if( m_parameters.amg.smootherType == "ilu1" )
-//    {
-//      GEOSX_LAI_CHECK_ERROR( HYPRE_ILUSetLevelOfFill( m_precond, 1 ) );
-//    }
-//  }
-//  else
-//  {
-//    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetRelaxType( m_precond, getHypreAMGRelaxationType( m_parameters.amg.smootherType ) ) );
-//
-//    if( m_parameters.amg.smootherType == "chebyshev" )
-//    {
-//      // Set order for Chebyshev smoother valid options 1, 2 (default), 3, 4)
-//      if( ( 0 < m_parameters.amg.numSweeps ) && ( m_parameters.amg.numSweeps < 5 ) )
-//      {
-//        GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetChebyOrder( m_precond, toHYPRE_Int( m_parameters.amg.numSweeps ) ) );
-//      }
-//    }
-//  }
-//
-//  // Set coarsest level solver
-//  // (by default for coarsest grid size above 5,000 superlu_dist is used)
-//  GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetDSLUThreshold( m_precond, 5000 ) );
-//  if( m_parameters.amg.coarseType == "direct" )
-//  {
-//    GEOSX_LAI_CHECK_ERROR( hypre_BoomerAMGSetCycleRelaxType( m_precond, 9, 3 ) );
-//  }
-//
-//  // Set the number of sweeps
-//  if( m_parameters.amg.preOrPostSmoothing == "both" )
-//  {
-//    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetNumSweeps( m_precond, toHYPRE_Int( m_parameters.amg.numSweeps ) ) );
-//  }
-//  else if( m_parameters.amg.preOrPostSmoothing == "pre" )
-//  {
-//    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetCycleNumSweeps( m_precond, toHYPRE_Int( m_parameters.amg.numSweeps ), 1 ) );
-//    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetCycleNumSweeps( m_precond, 0, 2 ) );
-//  }
-//  else if( m_parameters.amg.preOrPostSmoothing == "post" )
-//  {
-//    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetCycleNumSweeps( m_precond, 0, 1 ) );
-//    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetCycleNumSweeps( m_precond, toHYPRE_Int( m_parameters.amg.numSweeps ), 2 ) );
-//  }
-//
-//  // Set strength of connection
-//  if( m_parameters.amg.threshold > 0.0 )
-//  {
-//    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetStrongThreshold( m_precond, m_parameters.amg.threshold ) );
-//  }
+  GEOSX_LOG_RANK_VAR( m_parameters.mgr.strategy  );
+  GEOSX_LOG_RANK_VAR( m_parameters.mgr.numComponentsPerField  );
+  GEOSX_LOG_RANK_VAR( m_parameters.mgr.numLocalDofsPerField  );
 
+ if( m_parameters.mgr.strategy == "Poroelastic" )
+  {
+    // Note: at the moment we assume single-phase flow
+    //
+    // Ingredients
+    //
+    // 1. F-points displacement, C-points pressure
+    // 2. F-points smoother: AMG, V-cycle, separate displacemente components
+    // 3. C-points coarse-grid/Schur complement solver: boomer AMG
+    // 4. Global smoother: none
+
+    // 2x2 block system, displacement index = 0, pressure index = 1
+    HYPRE_Int mgr_bsize = 2;
+    // Single-level reduction
+    HYPRE_Int mgr_nlevels = 1;
+
+    // Array to an array of indices as C-points
+    HYPRE_Int **mgr_cindices = hypre_CTAlloc(HYPRE_Int*, mgr_nlevels, HYPRE_MEMORY_HOST);
+    // Array of C-point indices
+    HYPRE_Int *lv1 = hypre_CTAlloc(HYPRE_Int, mgr_bsize, HYPRE_MEMORY_HOST);
+    // Pressure is C-point, reduce onto 2,2 block
+    lv1[0] = 1;
+    mgr_cindices[0] = lv1;
+
+    // The number of C-points for each level
+    HYPRE_Int *mgr_num_cindices = hypre_CTAlloc(HYPRE_Int, mgr_nlevels, HYPRE_MEMORY_HOST);
+    // Only 1 C-point, i.e. pressure
+    mgr_num_cindices[0] = 1;
+
+    // Array of global indices that indicate where each block starts on each processor
+    // The blocks are assumed to be contiguous
+    HYPRE_BigInt *mgr_idx_array = hypre_CTAlloc(HYPRE_BigInt, mgr_bsize, HYPRE_MEMORY_HOST);
+    mgr_idx_array[0] = m_parameters.mgr.ilower; // global index of where the first block starts, e.g. 0 on proc 0
+    mgr_idx_array[1] = mgr_idx_array[0] + m_parameters.mgr.numLocalDofsPerField[0]; // global index of where the second block starts, e.g. local_matrix_size/2
+
+    HYPRE_MGRCreate(&m_precond);
+    // Set the block structure in MGR
+    HYPRE_MGRSetCpointsByContiguousBlock(m_precond, mgr_bsize, mgr_nlevels, mgr_idx_array, mgr_num_cindices, mgr_cindices);
+    // Apply AMG to the F-point, i.e. velocity; the coarse-grid/Schur complement is solved with AMG by default
+    HYPRE_MGRSetFRelaxMethod(m_precond, 99);
+    HYPRE_MGRSetNonCpointsToFpoints(m_precond, 1);
+
+
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetMaxGlobalsmoothIters(m_precond, 0) );
+  }
+  else
+  {
+    GEOSX_ERROR( "Unsupported MGR strategy: " << m_parameters.mgr.strategy );
+  }
   m_functions->setup = HYPRE_MGRSetup;
   m_functions->apply = HYPRE_MGRSolve;
   m_functions->destroy = HYPRE_MGRDestroy;
@@ -308,23 +301,6 @@ void HyprePreconditioner::compute( Matrix const & mat )
   PreconditionerBase::compute( mat );
   GEOSX_LAI_CHECK_ERROR( m_functions->setup( m_precond, mat.unwrapped(), nullptr, nullptr ) );
 }
-
-void HyprePreconditioner::compute( Matrix const & mat,
-                                   DofManager const & dofManager )
-{
-  GEOSX_LOG_RANK_VAR( m_parameters.preconditionerType );
-  GEOSX_LOG_RANK_VAR( m_parameters.mgr.strategy );
-
-  GEOSX_UNUSED_VAR( dofManager );
-  GEOSX_ERROR( "Stop execution" );
-  HyprePreconditioner::compute( mat );
-}
-
-//void HyprePreconditioner::compute( Matrix const & mat )
-//{
-//  PreconditionerBase::compute( mat );
-//  GEOSX_LAI_CHECK_ERROR( m_functions->setup( m_precond, mat.unwrapped(), nullptr, nullptr ) );
-//}
 
 void HyprePreconditioner::apply( Vector const & src,
                                  Vector & dst ) const

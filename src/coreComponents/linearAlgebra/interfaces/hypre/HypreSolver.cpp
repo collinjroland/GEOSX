@@ -194,7 +194,7 @@ void HypreSolver::solve_krylov( HypreMatrix & mat,
 
   // Deal with separate component approximation
   HypreMatrix separateComponentMatrix;
-  if( m_parameters.amg.separateComponents )
+  if( m_parameters.amg.separateComponents && m_parameters.preconditionerType != "mgr" )
   {
     LAIHelperFunctions::SeparateComponentFilter( mat, separateComponentMatrix, m_parameters.dofsPerNode );
   }
@@ -217,7 +217,7 @@ void HypreSolver::solve_krylov( HypreMatrix & mat,
                                             rhs.unwrapped(),
                                             sol.unwrapped() ) );
   m_result.setupTime = watch.elapsedTime();
-
+GEOSX_LOG_RANK( "setPrecond" );
   // Solve
   watch.zero();
   HYPRE_Int const result = solverFuncs.solve( solver,

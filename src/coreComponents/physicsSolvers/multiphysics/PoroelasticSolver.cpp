@@ -61,6 +61,8 @@ PoroelasticSolver::PoroelasticSolver( const std::string & name,
   registerWrapper( viewKeyStruct::couplingTypeOptionStringString, &m_couplingTypeOptionString )->
     setInputFlag( InputFlags::REQUIRED )->
     setDescription( "Coupling option: (FIM, SIM_FixedStress)" );
+
+  { m_linearSolverParameters.get().mgr.strategy = "Poroelastic"; }
 }
 
 void PoroelasticSolver::RegisterDataOnMesh( dataRepository::Group * const MeshBodies )
@@ -587,7 +589,8 @@ void PoroelasticSolver::CreatePreconditioner()
   }
   else
   {
-    m_precond = LAInterface::createPreconditioner( m_linearSolverParameters.get() );
+    //TODO: Revisit this part such that is coherent across physics solver
+    //m_precond = LAInterface::createPreconditioner( m_linearSolverParameters.get() );
   }
 }
 
@@ -597,7 +600,6 @@ void PoroelasticSolver::SolveSystem( DofManager const & dofManager,
                                      ParallelVector & solution )
 {
   solution.zero();
-
   SolverBase::SolveSystem( dofManager, matrix, rhs, solution );
 }
 

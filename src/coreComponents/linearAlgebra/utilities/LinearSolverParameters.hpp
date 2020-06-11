@@ -78,7 +78,12 @@ public:
   /// Multigrid reduction parameters
   struct MGR
   {
-    string  strategy;
+    string  strategy;                            ///< Predefined MGR solution strategy (solver specific)
+    globalIndex ilower;                          ///< Global index of the first row in the first field in
+                                                 ///< this processor
+    array1d< localIndex > numComponentsPerField; ///< Array of number of unknowns at the same support
+                                                 /// point < (e.g., element, face, edge, node) per field
+    array1d< localIndex > numLocalDofsPerField;  ///< Array of number of local dofs (i.e. local rows) per field
   }
   mgr;
 

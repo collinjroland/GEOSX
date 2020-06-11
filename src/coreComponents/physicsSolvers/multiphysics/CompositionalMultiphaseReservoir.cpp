@@ -38,7 +38,7 @@ using namespace constitutive;
 CompositionalMultiphaseReservoir::CompositionalMultiphaseReservoir( const std::string & name,
                                                                     Group * const parent ):
   ReservoirSolverBase( name, parent )
-{}
+{ m_linearSolverParameters.get().mgr.strategy = "CompositionalMultiphaseReservoir"; }
 
 CompositionalMultiphaseReservoir::~CompositionalMultiphaseReservoir()
 {}
@@ -268,10 +268,6 @@ void CompositionalMultiphaseReservoir::SetupSystem( DomainPartition * const doma
                                                     ParallelVector & solution )
 {
   ReservoirSolverBase::SetupSystem( domain, dofManager, matrix, rhs, solution );
-  if( getLinearSolverParameters().preconditionerType == "mgr" )
-  {
-    getLinearSolverParameters().mgr.strategy = "CompositionalMultiphaseReservoir";
-  }
 }
 
 REGISTER_CATALOG_ENTRY( SolverBase, CompositionalMultiphaseReservoir, std::string const &, Group * const )
