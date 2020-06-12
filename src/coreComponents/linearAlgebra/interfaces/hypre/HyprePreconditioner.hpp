@@ -67,7 +67,8 @@ public:
    * @brief Constructor.
    * @param params preconditioner parameters
    */
-  explicit HyprePreconditioner( LinearSolverParameters params );
+  explicit HyprePreconditioner( LinearSolverParameters params,
+                                DofManager const * const dofManager = nullptr );
 
   /**
    * @brief Destructor.
@@ -111,7 +112,7 @@ private:
 
   void createAMG();
 
-  void createMGR();
+  void createMGR( DofManager const * const dofManager );
 
   void createILU();
 

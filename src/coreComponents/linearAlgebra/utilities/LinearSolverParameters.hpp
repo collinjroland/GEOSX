@@ -73,17 +73,14 @@ public:
     integer separateComponents = false;      ///< Apply a separate component filter before AMG construction
     string nullSpaceType = "constantModes";  ///< Null space type [constantModes,rigidBodyModes]
   }
-  amg;                                      //!< Algebraic Multigrid (AMG) parameters
+  amg;                                       //!< Algebraic Multigrid (AMG) parameters
 
   /// Multigrid reduction parameters
   struct MGR
   {
-    string  strategy;                            ///< Predefined MGR solution strategy (solver specific)
-    globalIndex ilower;                          ///< Global index of the first row in the first field in
-                                                 ///< this processor
-    array1d< localIndex > numComponentsPerField; ///< Array of number of unknowns at the same support
-                                                 /// point < (e.g., element, face, edge, node) per field
-    array1d< localIndex > numLocalDofsPerField;  ///< Array of number of local dofs (i.e. local rows) per field
+    string  strategy;                   ///< Predefined MGR solution strategy (solver specific)
+    integer separateComponents = false; ///< Apply a separate displacement component (SDC) filter before AMG construction
+    string displacementFieldName;       ///< Displacement field name need for SDC filter
   }
   mgr;
 

@@ -630,16 +630,8 @@ void SolverBase::SolveSystem( DofManager const & dofManager,
 
   if( params.solverType == "direct" || !m_precond )
   {
-
-    if( params.preconditionerType == "mgr" )
-    {
-      m_linearSolverParameters.get().mgr.ilower = matrix.ilower();
-      m_linearSolverParameters.get().mgr.numComponentsPerField = dofManager.numComponentsPerField();
-      m_linearSolverParameters.get().mgr.numLocalDofsPerField = dofManager.numLocalDofsPerField();
-    }
-
     LinearSolver solver( params );
-    solver.solve( matrix, solution, rhs );
+    solver.solve( matrix, solution, rhs, &dofManager );
     m_linearSolverResult = solver.result();
   }
   else

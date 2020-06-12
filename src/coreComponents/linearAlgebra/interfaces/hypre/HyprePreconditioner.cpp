@@ -19,6 +19,7 @@
 #include "HyprePreconditioner.hpp"
 #include "HypreMGRStrategies.hpp"
 
+#include "linearAlgebra/DofManager.hpp"
 #include "linearAlgebra/interfaces/hypre/HypreUtils.hpp"
 #include "linearAlgebra/utilities/LinearSolverParameters.hpp"
 #include "linearAlgebra/utilities/LAIHelperFunctions.hpp"
@@ -31,7 +32,8 @@
 namespace geosx
 {
 
-HyprePreconditioner::HyprePreconditioner( LinearSolverParameters params )
+HyprePreconditioner::HyprePreconditioner( LinearSolverParameters params,
+                                          DofManager const * const dofManager )
   : Base{},
   m_parameters( std::move( params ) ),
   m_precond{},
@@ -55,7 +57,7 @@ HyprePreconditioner::HyprePreconditioner( LinearSolverParameters params )
     }
     else if( m_parameters.preconditionerType == "mgr" )
     {
-      createMGR();
+      createMGR( dofManager );
     }
     else if( m_parameters.preconditionerType == "iluk" )
     {
@@ -206,7 +208,7 @@ void HyprePreconditioner::createILU()
   m_functions->destroy = HYPRE_ILUDestroy;
 }
 
-void HyprePreconditioner::createMGR()
+void HyprePreconditioner::createMGR( DofManager const * const dofManager )
 {
   GEOSX_LAI_CHECK_ERROR( HYPRE_MGRCreate( &m_precond ) );
 
@@ -216,8 +218,17 @@ void HyprePreconditioner::createMGR()
   GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetPrintLevel( m_precond, toHYPRE_Int( m_parameters.logLevel ) ) );;
 
   GEOSX_LOG_RANK_VAR( m_parameters.mgr.strategy  );
-  GEOSX_LOG_RANK_VAR( m_parameters.mgr.numComponentsPerField  );
-  GEOSX_LOG_RANK_VAR( m_parameters.mgr.numLocalDofsPerField  );
+
+  globalIndex ilower = dofManager->rankOffset();
+  array1d< localIndex > numComponentsPerField = dofManager->numComponentsPerField();
+  array1d< localIndex > numLocalDofsPerField = dofManager->numLocalDofsPerField();
+
+//  GEOSX_LOG_RANK_VAR( ilower  );
+//  GEOSX_LOG_RANK_VAR( numComponentsPerField  );
+//  GEOSX_LOG_RANK_VAR( numLocalDofsPerField  );
+//  GEOSX_LOG_RANK_VAR( computeLocalDofComponentLabels( numComponentsPerField,
+//                                                      numLocalDofsPerField ) );
+
 
  if( m_parameters.mgr.strategy == "Poroelastic" )
   {
@@ -248,18 +259,27 @@ void HyprePreconditioner::createMGR()
     // Only 1 C-point, i.e. pressure
     mgr_num_cindices[0] = 1;
 
+
     // Array of global indices that indicate where each block starts on each processor
     // The blocks are assumed to be contiguous
-    HYPRE_BigInt *mgr_idx_array = hypre_CTAlloc(HYPRE_BigInt, mgr_bsize, HYPRE_MEMORY_HOST);
-    mgr_idx_array[0] = m_parameters.mgr.ilower; // global index of where the first block starts, e.g. 0 on proc 0
-    mgr_idx_array[1] = mgr_idx_array[0] + m_parameters.mgr.numLocalDofsPerField[0]; // global index of where the second block starts, e.g. local_matrix_size/2
+    std::vector< HYPRE_BigInt > idx_array; //TODO: move outsize ?
 
-    HYPRE_MGRCreate(&m_precond);
+    idx_array.resize( mgr_bsize );
+    // global index of where the first block starts
+    idx_array[0] = LvArray::integerConversion< HYPRE_BigInt > (  ilower );
+    // global index of where the pressures block starts
+    idx_array[1] = idx_array[0] + numLocalDofsPerField[0];
+
+
+
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRCreate(&m_precond) );
     // Set the block structure in MGR
-    HYPRE_MGRSetCpointsByContiguousBlock(m_precond, mgr_bsize, mgr_nlevels, mgr_idx_array, mgr_num_cindices, mgr_cindices);
+    HYPRE_MGRSetCpointsByContiguousBlock(m_precond, mgr_bsize, mgr_nlevels, idx_array.data(), mgr_num_cindices, mgr_cindices);
     // Apply AMG to the F-point, i.e. velocity; the coarse-grid/Schur complement is solved with AMG by default
-    HYPRE_MGRSetFRelaxMethod(m_precond, 99);
-    HYPRE_MGRSetNonCpointsToFpoints(m_precond, 1);
+
+    // extract (u,u) - block
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetFRelaxMethod(m_precond, 99) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetNonCpointsToFpoints(m_precond, 1 ));
 
 
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetMaxGlobalsmoothIters(m_precond, 0) );
@@ -271,6 +291,7 @@ void HyprePreconditioner::createMGR()
   m_functions->setup = HYPRE_MGRSetup;
   m_functions->apply = HYPRE_MGRSolve;
   m_functions->destroy = HYPRE_MGRDestroy;
+  GEOSX_LOG_RANK( "Completing MGR creation" );
 }
 
 void HyprePreconditioner::createILUT()

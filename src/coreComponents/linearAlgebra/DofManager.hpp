@@ -338,7 +338,7 @@ public:
    * @param [in] fieldName Optional string the name of the field.
    * @return     the rank offset
    */
-  localIndex rankOffset( string const & fieldName = "" ) const;
+  globalIndex rankOffset( string const & fieldName = "" ) const;
 
   /**
    * @brief Get the number of components in a field. If field argument is empty, return

@@ -62,7 +62,10 @@ PoroelasticSolver::PoroelasticSolver( const std::string & name,
     setInputFlag( InputFlags::REQUIRED )->
     setDescription( "Coupling option: (FIM, SIM_FixedStress)" );
 
-  { m_linearSolverParameters.get().mgr.strategy = "Poroelastic"; }
+  m_linearSolverParameters.get().mgr.strategy = "Poroelastic";
+  m_linearSolverParameters.get().mgr.separateComponents = true;
+  m_linearSolverParameters.get().mgr.displacementFieldName = keys::TotalDisplacement;
+  m_linearSolverParameters.get().dofsPerNode = 3;
 }
 
 void PoroelasticSolver::RegisterDataOnMesh( dataRepository::Group * const MeshBodies )

@@ -19,6 +19,7 @@
 #include "HypreSolver.hpp"
 
 #include "common/Stopwatch.hpp"
+#include "linearAlgebra/DofManager.hpp"
 #include "linearAlgebra/interfaces/hypre/HypreMatrix.hpp"
 #include "linearAlgebra/interfaces/hypre/HypreVector.hpp"
 #include "linearAlgebra/interfaces/hypre/HyprePreconditioner.hpp"
@@ -49,7 +50,8 @@ HypreSolver::HypreSolver( LinearSolverParameters parameters )
 //
 void HypreSolver::solve( HypreMatrix & mat,
                          HypreVector & sol,
-                         HypreVector & rhs )
+                         HypreVector & rhs,
+                         DofManager const * const dofManager )
 {
   GEOSX_LAI_ASSERT( mat.ready() );
   GEOSX_LAI_ASSERT( sol.ready() );
@@ -61,7 +63,7 @@ void HypreSolver::solve( HypreMatrix & mat,
   }
   else
   {
-    solve_krylov( mat, sol, rhs );
+    solve_krylov( mat, sol, rhs, dofManager );
   }
 }
 
@@ -185,18 +187,42 @@ void CreateHypreKrylovSolver( LinearSolverParameters const & params,
 
 void HypreSolver::solve_krylov( HypreMatrix & mat,
                                 HypreVector & sol,
-                                HypreVector & rhs )
+                                HypreVector & rhs,
+                                DofManager const * const dofManager )
 {
   Stopwatch watch;
 
   // Create the preconditioner, but don't compute (this is done by solver setup)
-  HyprePreconditioner precond( m_parameters );
+  HyprePreconditioner precond( m_parameters, dofManager );
 
   // Deal with separate component approximation
+  // TODO: preliminary version for separate displacement components
   HypreMatrix separateComponentMatrix;
+  HYPRE_Solver uu_amg_solver = {};//TODO: this is a quick and dirty first implementation
+
   if( m_parameters.amg.separateComponents && m_parameters.preconditionerType != "mgr" )
   {
     LAIHelperFunctions::SeparateComponentFilter( mat, separateComponentMatrix, m_parameters.dofsPerNode );
+  }
+  else if( m_parameters.preconditionerType == "mgr" && m_parameters.mgr.separateComponents )
+  {
+    // Extract displacement block
+    HypreMatrix P;
+    HypreMatrix scr_mat;
+    dofManager->makeRestrictor( { { m_parameters.mgr.displacementFieldName, 0, 3 } }, mat.getComm(), true, P );
+    mat.multiplyPtAP( P, scr_mat );
+    LAIHelperFunctions::SeparateComponentFilter( scr_mat, separateComponentMatrix, m_parameters.dofsPerNode );
+
+    HYPRE_BoomerAMGCreate(&uu_amg_solver);
+    HYPRE_BoomerAMGSetTol(uu_amg_solver, 0.0);
+    HYPRE_BoomerAMGSetMaxIter(uu_amg_solver, 1);
+    HYPRE_BoomerAMGSetRelaxOrder(uu_amg_solver, 1);
+    HYPRE_BoomerAMGSetAggNumLevels(uu_amg_solver, 1);
+    HYPRE_BoomerAMGSetNumFunctions(uu_amg_solver, 3);
+
+    HYPRE_BoomerAMGSetup(uu_amg_solver, separateComponentMatrix.unwrapped(), nullptr, nullptr );
+
+    HYPRE_MGRSetFSolver(precond.unwrapped(), HYPRE_BoomerAMGSolve, HYPRE_BoomerAMGSetup, uu_amg_solver);
   }
   HypreMatrix & precondMat = m_parameters.amg.separateComponents ? separateComponentMatrix : mat;
 
@@ -217,7 +243,7 @@ void HypreSolver::solve_krylov( HypreMatrix & mat,
                                             rhs.unwrapped(),
                                             sol.unwrapped() ) );
   m_result.setupTime = watch.elapsedTime();
-GEOSX_LOG_RANK( "setPrecond" );
+
   // Solve
   watch.zero();
   HYPRE_Int const result = solverFuncs.solve( solver,
@@ -244,6 +270,10 @@ GEOSX_LOG_RANK( "setPrecond" );
 
   // Destroy solver
   GEOSX_LAI_CHECK_ERROR( solverFuncs.destroy( solver ) );
+  if( m_parameters.amg.separateComponents && m_parameters.preconditionerType != "mgr" )
+  {
+    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGDestroy(uu_amg_solver) );
+  }
 }
 
 } // end geosx namespace

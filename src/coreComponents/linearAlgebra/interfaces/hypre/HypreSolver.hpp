@@ -25,6 +25,7 @@
 namespace geosx
 {
 
+class DofManager;
 class HypreVector;
 class HypreMatrix;
 
@@ -56,7 +57,8 @@ public:
    */
   void solve( HypreMatrix & mat,
               HypreVector & sol,
-              HypreVector & rhs );
+              HypreVector & rhs,
+              DofManager const * const dofManager = nullptr);
 
   /**
    * @brief Get the result of previous solve.
@@ -78,7 +80,8 @@ private:
 
   void solve_krylov( HypreMatrix & mat,
                      HypreVector & sol,
-                     HypreVector & rhs );
+                     HypreVector & rhs,
+                     DofManager const * const dofManager );
 
 };
 

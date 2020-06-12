@@ -179,7 +179,7 @@ array1d< localIndex > DofManager::getLocalDofComponentLabels() const
   return ret;
 }
 
-localIndex DofManager::rankOffset( string const & fieldName ) const
+globalIndex DofManager::rankOffset( string const & fieldName ) const
 {
   if( !fieldName.empty() )
   {
