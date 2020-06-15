@@ -217,7 +217,7 @@ void HyprePreconditioner::createMGR( DofManager const * const dofManager )
   GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetMaxIter( m_precond, 1 ) );
   GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetPrintLevel( m_precond, toHYPRE_Int( m_parameters.logLevel ) ) );;
 
-  GEOSX_LOG_RANK_VAR( m_parameters.mgr.strategy  );
+//  GEOSX_LOG_RANK_VAR( m_parameters.mgr.strategy  );
 
   globalIndex ilower = dofManager->rankOffset();
   array1d< localIndex > numComponentsPerField = dofManager->numComponentsPerField();
@@ -291,7 +291,6 @@ void HyprePreconditioner::createMGR( DofManager const * const dofManager )
   m_functions->setup = HYPRE_MGRSetup;
   m_functions->apply = HYPRE_MGRSolve;
   m_functions->destroy = HYPRE_MGRDestroy;
-  GEOSX_LOG_RANK( "Completing MGR creation" );
 }
 
 void HyprePreconditioner::createILUT()
