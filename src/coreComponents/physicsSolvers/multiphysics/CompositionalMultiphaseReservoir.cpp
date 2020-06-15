@@ -261,15 +261,6 @@ void CompositionalMultiphaseReservoir::AssembleCouplingTerms( real64 const GEOSX
 
 }
 
-void CompositionalMultiphaseReservoir::SetupSystem( DomainPartition * const domain,
-                                                    DofManager & dofManager,
-                                                    ParallelMatrix & matrix,
-                                                    ParallelVector & rhs,
-                                                    ParallelVector & solution )
-{
-  ReservoirSolverBase::SetupSystem( domain, dofManager, matrix, rhs, solution );
-}
-
 REGISTER_CATALOG_ENTRY( SolverBase, CompositionalMultiphaseReservoir, std::string const &, Group * const )
 
 } /* namespace geosx */
