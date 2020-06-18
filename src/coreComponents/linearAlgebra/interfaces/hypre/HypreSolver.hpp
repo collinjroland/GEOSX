@@ -58,7 +58,7 @@ public:
   void solve( HypreMatrix & mat,
               HypreVector & sol,
               HypreVector & rhs,
-              DofManager const * const dofManager = nullptr);
+              DofManager const * const dofManager = nullptr );
 
   /**
    * @brief Get the result of previous solve.

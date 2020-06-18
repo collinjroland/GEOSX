@@ -78,7 +78,7 @@ public:
   /// Multigrid reduction parameters
   struct MGR
   {
-    string  strategy;                   ///< Predefined MGR solution strategy (solver specific)
+    string strategy;                    ///< Predefined MGR solution strategy (solver specific)
     integer separateComponents = false; ///< Apply a separate displacement component (SDC) filter before AMG construction
     string displacementFieldName;       ///< Displacement field name need for SDC filter
   }

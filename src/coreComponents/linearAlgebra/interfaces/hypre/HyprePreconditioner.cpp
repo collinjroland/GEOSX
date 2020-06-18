@@ -219,7 +219,6 @@ void HyprePreconditioner::createMGR( DofManager const * const dofManager )
 
 //  GEOSX_LOG_RANK_VAR( m_parameters.mgr.strategy  );
 
-  globalIndex ilower = dofManager->rankOffset();
   array1d< localIndex > numComponentsPerField = dofManager->numComponentsPerField();
   array1d< localIndex > numLocalDofsPerField = dofManager->numLocalDofsPerField();
 
@@ -230,32 +229,68 @@ void HyprePreconditioner::createMGR( DofManager const * const dofManager )
 //                                                      numLocalDofsPerField ) );
 
 
- if( m_parameters.mgr.strategy == "Poroelastic" )
+  std::vector< HYPRE_Int > num_block_coarse_points;
+  std::vector< HYPRE_Int * > lvl_block_coarse_indexes;
+  std::vector< std::vector< HYPRE_Int > > lvl_block_coarse_indexes_data;
+  std::vector< HYPRE_Int > coarseGridMethod;
+  std::vector< HYPRE_Int > interpolationType;
+  array1d< HYPRE_Int > point_marker_array = computeLocalDofComponentLabels( numComponentsPerField,
+                                                                            numLocalDofsPerField );
+
+  if( m_parameters.mgr.strategy == "Poroelastic" )
   {
-    // Note: at the moment we assume single-phase flow
+    // Note: at the moment we assume single-phase flow poroelasticity
+    //
+    // dofLabel: 0 = displacement, x-component
+    // dofLabel: 1 = displacement, y-component
+    // dofLabel: 2 = displacement, z-component
+    // dofLabel: 3 = pressure
     //
     // Ingredients
     //
-    // 1. F-points displacement, C-points pressure
+    // 1. F-points displacement (0,1,2), C-points pressure (3)
     // 2. F-points smoother: AMG, V-cycle, separate displacemente components
     // 3. C-points coarse-grid/Schur complement solver: boomer AMG
     // 4. Global smoother: none
 
-    // 2x2 block system, displacement index = 0, pressure index = 1
+    // 2x2 block system, displacement indeces = (0,1,2), pressure index = 3
     HYPRE_Int mgr_bsize = 2;
     // Single-level reduction
     HYPRE_Int mgr_nlevels = 1;
 
+    coarseGridMethod.resize( mgr_nlevels );
+    coarseGridMethod[0] = 1; //diagonal sparsification
+    interpolationType.resize( mgr_nlevels );
+    interpolationType[0] = 2;
+
+#if 0
+    num_block_coarse_points.resize( mgr_nlevels );
+    lvl_block_coarse_indexes.resize( mgr_nlevels );
+    lvl_block_coarse_indexes_data.resize( mgr_nlevels );
+
+    num_block_coarse_points[0] = 1;
+    lvl_block_coarse_indexes_data[0].resize( 1 );
+    lvl_block_coarse_indexes_data[0][0] = 3;
+
+    for( HYPRE_Int i = 0; i < mgr_nlevels; ++i )
+    {
+      lvl_block_coarse_indexes[i] = lvl_block_coarse_indexes_data[i].data();
+    }
+#endif
+    ///////////////////////////////////////////////////
+
+
+
     // Array to an array of indices as C-points
-    HYPRE_Int **mgr_cindices = hypre_CTAlloc(HYPRE_Int*, mgr_nlevels, HYPRE_MEMORY_HOST);
+    HYPRE_Int * *mgr_cindices = hypre_CTAlloc( HYPRE_Int *, mgr_nlevels, HYPRE_MEMORY_HOST );
     // Array of C-point indices
-    HYPRE_Int *lv1 = hypre_CTAlloc(HYPRE_Int, mgr_bsize, HYPRE_MEMORY_HOST);
+    HYPRE_Int *lv1 = hypre_CTAlloc( HYPRE_Int, mgr_bsize, HYPRE_MEMORY_HOST );
     // Pressure is C-point, reduce onto 2,2 block
     lv1[0] = 1;
     mgr_cindices[0] = lv1;
 
     // The number of C-points for each level
-    HYPRE_Int *mgr_num_cindices = hypre_CTAlloc(HYPRE_Int, mgr_nlevels, HYPRE_MEMORY_HOST);
+    HYPRE_Int *mgr_num_cindices = hypre_CTAlloc( HYPRE_Int, mgr_nlevels, HYPRE_MEMORY_HOST );
     // Only 1 C-point, i.e. pressure
     mgr_num_cindices[0] = 1;
 
@@ -266,23 +301,37 @@ void HyprePreconditioner::createMGR( DofManager const * const dofManager )
 
     idx_array.resize( mgr_bsize );
     // global index of where the first block starts
-    idx_array[0] = LvArray::integerConversion< HYPRE_BigInt > (  ilower );
+    idx_array[0] = LvArray::integerConversion< HYPRE_BigInt >( dofManager->rankOffset() );
     // global index of where the pressures block starts
     idx_array[1] = idx_array[0] + numLocalDofsPerField[0];
 
-
-
-    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRCreate(&m_precond) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRCreate( &m_precond ) );
     // Set the block structure in MGR
-    HYPRE_MGRSetCpointsByContiguousBlock(m_precond, mgr_bsize, mgr_nlevels, idx_array.data(), mgr_num_cindices, mgr_cindices);
+    HYPRE_MGRSetCpointsByContiguousBlock( m_precond, mgr_bsize, mgr_nlevels, idx_array.data(), mgr_num_cindices, mgr_cindices );
     // Apply AMG to the F-point, i.e. velocity; the coarse-grid/Schur complement is solved with AMG by default
 
+//    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetCpointsByPointMarkerArray( m_precond,
+//                                              mgr_bsize,
+//																  mgr_nlevels,
+//																  num_block_coarse_points.data(),
+//                                                                  lvl_block_coarse_indexes.data(),
+//																  point_marker_array.data() ) );
+
+    // Apply AMG to the F-point, i.e. velocity; the coarse-grid/Schur complement is solved with AMG by default
     // extract (u,u) - block
-    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetFRelaxMethod(m_precond, 99) );
-    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetNonCpointsToFpoints(m_precond, 1 ));
-
-
-    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetMaxGlobalsmoothIters(m_precond, 0) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetFRelaxMethod( m_precond, 99 ) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetNonCpointsToFpoints( m_precond, 1 ));
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetLevelInterpType( m_precond, interpolationType.data() ) );
+    //GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetCoarseGridMethod( m_precond, coarseGridMethod.data() ) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetMaxGlobalsmoothIters( m_precond, 0 ) );
+  }
+  else if( m_parameters.mgr.strategy == "CompositionalMultiphaseFlow" )
+  {
+    GEOSX_ERROR( "To be implemented" );
+  }
+  else if( m_parameters.mgr.strategy == "CompositionalMultiphaseReservoir" )
+  {
+    GEOSX_ERROR( "To be implemented" );
   }
   else
   {

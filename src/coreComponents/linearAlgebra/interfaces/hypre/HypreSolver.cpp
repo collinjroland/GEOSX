@@ -213,16 +213,17 @@ void HypreSolver::solve_krylov( HypreMatrix & mat,
     mat.multiplyPtAP( P, scr_mat );
     LAIHelperFunctions::SeparateComponentFilter( scr_mat, separateComponentMatrix, m_parameters.dofsPerNode );
 
-    HYPRE_BoomerAMGCreate(&uu_amg_solver);
-    HYPRE_BoomerAMGSetTol(uu_amg_solver, 0.0);
-    HYPRE_BoomerAMGSetMaxIter(uu_amg_solver, 1);
-    HYPRE_BoomerAMGSetRelaxOrder(uu_amg_solver, 1);
-    HYPRE_BoomerAMGSetAggNumLevels(uu_amg_solver, 1);
-    HYPRE_BoomerAMGSetNumFunctions(uu_amg_solver, 3);
+    HYPRE_BoomerAMGCreate( &uu_amg_solver );
+    HYPRE_BoomerAMGSetTol( uu_amg_solver, 0.0 );
+    HYPRE_BoomerAMGSetMaxIter( uu_amg_solver, 1 );
+    HYPRE_BoomerAMGSetRelaxOrder( uu_amg_solver, 1 );
+    HYPRE_BoomerAMGSetAggNumLevels( uu_amg_solver, 1 );
+    HYPRE_BoomerAMGSetNumFunctions( uu_amg_solver, 3 );
 
-    HYPRE_BoomerAMGSetup(uu_amg_solver, separateComponentMatrix.unwrapped(), nullptr, nullptr );
+    HYPRE_BoomerAMGSetup( uu_amg_solver, separateComponentMatrix.unwrapped(), nullptr, nullptr );
 
-    HYPRE_MGRSetFSolver(precond.unwrapped(), HYPRE_BoomerAMGSolve, HYPRE_BoomerAMGSetup, uu_amg_solver);
+    HYPRE_MGRSetFSolver( precond.unwrapped(), HYPRE_BoomerAMGSolve, HYPRE_BoomerAMGSetup, uu_amg_solver );
+
   }
   HypreMatrix & precondMat = m_parameters.amg.separateComponents ? separateComponentMatrix : mat;
 
@@ -251,7 +252,7 @@ void HypreSolver::solve_krylov( HypreMatrix & mat,
                                               rhs.unwrapped(),
                                               sol.unwrapped() );
   m_result.solveTime = watch.elapsedTime();
-
+  GEOSX_LOG_RANK_VAR( result );
   // Set result status based on return value
   m_result.status = result ? LinearSolverResult::Status::NotConverged : LinearSolverResult::Status::Success;
 
@@ -270,9 +271,9 @@ void HypreSolver::solve_krylov( HypreMatrix & mat,
 
   // Destroy solver
   GEOSX_LAI_CHECK_ERROR( solverFuncs.destroy( solver ) );
-  if( m_parameters.amg.separateComponents && m_parameters.preconditionerType != "mgr" )
+  if( m_parameters.preconditionerType == "mgr" && m_parameters.mgr.separateComponents )
   {
-    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGDestroy(uu_amg_solver) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGDestroy( uu_amg_solver ) );
   }
 }
 

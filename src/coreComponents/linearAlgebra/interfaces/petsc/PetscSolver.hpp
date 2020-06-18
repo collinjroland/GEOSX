@@ -59,7 +59,7 @@ public:
   void solve( PetscMatrix & mat,
               PetscVector & sol,
               PetscVector & rhs,
-              DofManager const * const dofManager = nullptr);
+              DofManager const * const dofManager = nullptr );
 
   /**
    * @brief Get the result of previous solve.

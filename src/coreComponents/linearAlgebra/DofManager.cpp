@@ -134,7 +134,7 @@ array1d< localIndex > DofManager::numLocalDofsPerField() const
   localIndex numFields = m_fields.size();
   if( numFields > 0 )
   {
-    for(const auto & field : m_fields)
+    for( const auto & field : m_fields )
     {
       ret.push_back( field.numLocalDof );
     }
@@ -145,7 +145,7 @@ array1d< localIndex > DofManager::numLocalDofsPerField() const
 array1d< localIndex > DofManager::getLocalDofComponentLabels() const
 {
   array1d< localIndex > ret;
-  if ( m_fields.size() > 0 )
+  if( m_fields.size() > 0 )
   {
     localIndex numTotalLocalDof = std::accumulate( m_fields.begin(), m_fields.end(), 0,
                                                    []( localIndex const & n, FieldDescription const & f ) { return n + f.numLocalDof; } );
@@ -156,18 +156,18 @@ array1d< localIndex > DofManager::getLocalDofComponentLabels() const
     localIndex istr= 0;
     localIndex iend;
     localIndex numComp;
-    for (const auto & field : m_fields)
+    for( const auto & field : m_fields )
     {
       numComp = field.numComponents;
       array1d< integer > vectorLabels( numComp );
-      for ( localIndex k = 0; k < numComp; ++k )
+      for( localIndex k = 0; k < numComp; ++k )
       {
         vectorLabels[k] = k + firstLabel;
       }
       iend = istr + field.numLocalDof;
-      for ( localIndex i = istr; i < iend; i += numComp )
+      for( localIndex i = istr; i < iend; i += numComp )
       {
-        for ( integer k = 0; k < numComp; ++k )
+        for( integer k = 0; k < numComp; ++k )
         {
           ret[i+k] = vectorLabels[k];
         }
@@ -212,7 +212,7 @@ array1d< localIndex > DofManager::numComponentsPerField() const
   localIndex numFields = m_fields.size();
   if( numFields > 0 )
   {
-    for(const auto & field : m_fields)
+    for( const auto & field : m_fields )
     {
       ret.push_back( field.numComponents );
     }
