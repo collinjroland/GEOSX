@@ -207,10 +207,10 @@ void HypreSolver::solve_krylov( HypreMatrix & mat,
   else if( m_parameters.preconditionerType == "mgr" && m_parameters.mgr.separateComponents )
   {
     // Extract displacement block
-    HypreMatrix P;
+    HypreMatrix Pu;
     HypreMatrix scr_mat;
-    dofManager->makeRestrictor( { { m_parameters.mgr.displacementFieldName, 0, 3 } }, mat.getComm(), true, P );
-    mat.multiplyPtAP( P, scr_mat );
+    dofManager->makeRestrictor( { { m_parameters.mgr.displacementFieldName, 0, 3 } }, mat.getComm(), true, Pu );
+    mat.multiplyPtAP( Pu, scr_mat );
     LAIHelperFunctions::SeparateComponentFilter( scr_mat, separateComponentMatrix, m_parameters.dofsPerNode );
 
     HYPRE_BoomerAMGCreate( &uu_amg_solver );
@@ -252,7 +252,7 @@ void HypreSolver::solve_krylov( HypreMatrix & mat,
                                               rhs.unwrapped(),
                                               sol.unwrapped() );
   m_result.solveTime = watch.elapsedTime();
-  GEOSX_LOG_RANK_VAR( result );
+
   // Set result status based on return value
   m_result.status = result ? LinearSolverResult::Status::NotConverged : LinearSolverResult::Status::Success;
 
