@@ -1,0 +1,8 @@
+#!/bin/csh
+#SBATCH -N 1
+#SBATCH -t 04:10:00
+#SBATCH -p pbatch 
+
+# Run info and srun job launch
+srun -n1 ./geosx --input spe10_co2_wells.xml -x 1 -y 1 -z 1  
+echo 'Done'

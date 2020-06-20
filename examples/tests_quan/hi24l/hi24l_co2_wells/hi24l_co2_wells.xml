@@ -1,0 +1,523 @@
+<Problem>
+
+  <Solvers>
+
+    <CompositionalMultiphaseReservoir name="reservoirSystem"
+               flowSolverName="compositionalMultiphaseFlow"
+               wellSolverName="compositionalMultiphaseWell"
+               logLevel="1"
+               initialDt="1e-2"
+               targetRegions="{domain,
+                               wellRegion1,
+                               wellRegion2,
+                               wellRegion3,
+                               wellRegion4,
+                               wellRegion5,
+                               wellRegion6,
+                               wellRegion7,
+                               wellRegion8,
+                               wellRegion9,
+                               wellRegion10,
+                               wellRegion11}">
+      <NonlinearSolverParameters newtonTol="1.0e-5"
+                                 lineSearchAction="0"
+                                 dtIncIterLimit="0.15"
+                                 maxTimeStepCuts="10"
+                                 timestepCutFactor="0.8"
+                                 newtonMaxIter="40"/>
+      <LinearSolverParameters solverType="direct"
+                              logLevel="0"/>
+    </CompositionalMultiphaseReservoir>
+    
+    <CompositionalMultiphaseFlow name="compositionalMultiphaseFlow"
+                                 targetRegions="{domain}"
+                                 discretization="fluidTPFA"
+                                 fluidNames="{fluid1}"
+                                 solidNames="{rock}"
+                                 relPermNames="{relperm}"
+                                 temperature="368.15"
+                                 useMass="1">
+    </CompositionalMultiphaseFlow>
+
+    <CompositionalMultiphaseWell name="compositionalMultiphaseWell"
+                                 targetRegions="{wellRegion1,
+                                                 wellRegion2,
+                                                 wellRegion3,
+                                                 wellRegion4,
+                                                 wellRegion5,
+                                                 wellRegion6,
+                                                 wellRegion7,
+                                                 wellRegion8,
+                                                 wellRegion9,
+                                                 wellRegion10,
+                                                 wellRegion11}"
+                                 fluidNames="{fluid1}"
+                                 relPermNames="{relperm}"
+                                 wellTemperature="368.15"
+                                 logLevel="1"
+                                 useMass="1">
+        <WellControls name="wellControls1"
+                      type="injector"
+                      control="BHP"
+                      targetBHP="1e7"
+                      targetRate="1e9"
+                      injectionStream="{0.995, 0.005}"/>
+        <WellControls name="wellControls2"
+                      type="injector"
+                      control="BHP"
+                      targetBHP="1e7"
+                      targetRate="1e9"
+                      injectionStream="{0.995, 0.005}"/>
+        <WellControls name="wellControls3"
+                      type="injector"
+                      control="BHP" 
+                      targetBHP="1e7"
+                      targetRate="1e9"
+                      injectionStream="{0.995, 0.005}"/>
+        <WellControls name="wellControls4"
+                      type="injector"
+                      control="BHP" 
+                      targetBHP="1e7"
+                      targetRate="1e9"
+                      injectionStream="{0.995, 0.005}"/>
+        <WellControls name="wellControls5"
+                      type="injector"
+                      control="BHP"
+                      targetBHP="1e7"
+                      targetRate="1e9"
+                      injectionStream="{0.995, 0.005}"/>
+        <WellControls name="wellControls6"
+                      type="injector"
+                      control="BHP"
+                      targetBHP="1e7"
+                      targetRate="1e9"
+                      injectionStream="{0.995, 0.005}"/>
+        <WellControls name="wellControls7"
+                      type="injector"
+                      control="BHP"
+                      targetBHP="1e7"
+                      targetRate="1e9"
+                      injectionStream="{0.995, 0.005}"/>
+        <WellControls name="wellControls8"
+                      type="injector"
+                      control="BHP"
+                      targetBHP="1e7"
+                      targetRate="1e9"
+                      injectionStream="{0.995, 0.005}"/>              
+        <WellControls name="wellControls9"
+                      type="injector"
+                      control="BHP"
+                      targetBHP="1e7"
+                      targetRate="1e9"
+                      injectionStream="{0.995, 0.005}"/>
+        <WellControls name="wellControls10"
+                      type="injector"
+                      control="BHP"
+                      targetBHP="1e7"
+                      targetRate="1e9"
+                      injectionStream="{0.995, 0.005}"/>
+        <WellControls name="wellControls11"
+                      type="injector"
+                      control="BHP"
+                      targetBHP="1e7"
+                      targetRate="1e9"
+                      injectionStream="{0.995, 0.005}"/>
+    </CompositionalMultiphaseWell>
+
+    
+  </Solvers>
+  
+  <Mesh>
+    <PAMELAMeshGenerator name="CubeTetra"
+                         file="../mesh/hi24l_mesh.msh"/>
+
+    <InternalWell name="well_injector1"
+                  wellRegionName="wellRegion1"
+                  wellControlsName="wellControls1"
+                  meshName="CubeTetra"
+                  polylineNodeCoords="{ { 386431, 3262250, -1990.15 },
+                                        { 386431, 3262250, -2200.15 } }"
+                  polylineSegmentConn="{ {0, 1} }"
+                  radius="0.1"
+                  numElementsPerSegment="20">
+        <Perforation name="injector1_perf1"
+                     distanceFromHead="200"/> 
+        <Perforation name="injector1_perf2"
+                     distanceFromHead="160"/> 
+        <Perforation name="injector1_perf3"
+                     distanceFromHead="110"/> 
+        <Perforation name="injector1_perf4"
+                     distanceFromHead="60"/> 
+        <Perforation name="injector1_perf5"
+                     distanceFromHead="10"/> 
+
+    </InternalWell>
+
+    <InternalWell name="well_injector2"
+                  wellRegionName="wellRegion2"
+                  wellControlsName="wellControls2"
+                  meshName="CubeTetra"
+                  polylineNodeCoords="{ { 394519, 3262820, -1990.15 },
+                                        { 394519, 3262820, -2200.15 } }"
+                  polylineSegmentConn="{ {0, 1} }"
+                  radius="0.1"
+                  numElementsPerSegment="20">
+        <Perforation name="injector2_perf1"
+                     distanceFromHead="200"/> 
+        <Perforation name="injector2_perf2"
+                     distanceFromHead="160"/> 
+       <Perforation name="injector2_perf3"
+                     distanceFromHead="110"/> 
+        <Perforation name="injector2_perf4"
+                     distanceFromHead="60"/> 
+        <Perforation name="injector2_perf5"
+                     distanceFromHead="10"/> 
+    </InternalWell>
+
+    <InternalWell name="well_injector3"
+                  wellRegionName="wellRegion3"
+                  wellControlsName="wellControls3"
+                  meshName="CubeTetra"
+                  polylineNodeCoords="{ { 390873, 3262620, -1990.15 },
+                                        { 390873, 3262620, -2200.15 } }"
+                  polylineSegmentConn="{ {0, 1} }"
+                  radius="0.1"
+                  numElementsPerSegment="20">
+        <Perforation name="injector3_perf1"
+                     distanceFromHead="200"/> 
+        <Perforation name="injector3_perf2"
+                     distanceFromHead="160"/> 
+        <Perforation name="injector3_perf3"
+                     distanceFromHead="110"/> 
+        <Perforation name="injector3_perf4"
+                     distanceFromHead="60"/> 
+        <Perforation name="injector3_perf5"
+                     distanceFromHead="10"/>
+    </InternalWell>
+ 
+    <InternalWell name="well_injector4"
+                  wellRegionName="wellRegion4"
+                  wellControlsName="wellControls4"
+                  meshName="CubeTetra"
+                  polylineNodeCoords="{ { 390561, 3265500, -1990.15 },
+                                        { 390561, 3265500, -2200.15 } }"
+                  polylineSegmentConn="{ {0, 1} }"
+                  radius="0.1"
+                  numElementsPerSegment="20">
+        <Perforation name="injector4_perf1"
+                     distanceFromHead="200"/> 
+        <Perforation name="injector4_perf2"
+                     distanceFromHead="160"/> 
+        <Perforation name="injector4_perf3"
+                     distanceFromHead="110"/> 
+        <Perforation name="injector4_perf4"
+                     distanceFromHead="60"/> 
+        <Perforation name="injector4_perf5"
+                     distanceFromHead="10"/> 
+
+    </InternalWell>
+
+    <InternalWell name="well_injector5"
+                  wellRegionName="wellRegion5"
+                  wellControlsName="wellControls5"
+                  meshName="CubeTetra"
+                  polylineNodeCoords="{ {388343,  3272320, -1700.69  },
+                                        {388343,  3272320, -2000.69  } }"
+                  polylineSegmentConn="{ {0, 1} }"
+                  radius="0.1"
+                  numElementsPerSegment="20">
+        <Perforation name="injector5_perf1"
+                     distanceFromHead="300"/> 
+        <Perforation name="injector5_perf2"
+                     distanceFromHead="250"/> 
+        <Perforation name="injector5_perf3"
+                     distanceFromHead="200"/> 
+        <Perforation name="injector5_perf4"
+                     distanceFromHead="150"/> 
+        <Perforation name="injector5_perf5"
+                     distanceFromHead="100"/> 
+    </InternalWell>
+
+    <InternalWell name="well_injector6"
+                  wellRegionName="wellRegion6"
+                  wellControlsName="wellControls6"
+                  meshName="CubeTetra"
+                  polylineNodeCoords="{ {387222, 3273310, -1700.69  },
+                                        {387222, 3273310, -2000.69  } }"
+                  polylineSegmentConn="{ {0, 1} }"
+                  radius="0.1"
+                  numElementsPerSegment="20">
+        <Perforation name="injector6_perf1"
+                     distanceFromHead="300"/> 
+        <Perforation name="injector6_perf2"
+                     distanceFromHead="250"/> 
+        <Perforation name="injector6_perf3"
+                     distanceFromHead="200"/> 
+        <Perforation name="injector6_perf4"
+                     distanceFromHead="150"/> 
+        <Perforation name="injector6_perf5"
+                     distanceFromHead="100"/> 
+    </InternalWell>
+
+
+    <InternalWell name="well_injector7"
+                  wellRegionName="wellRegion7"
+                  wellControlsName="wellControls7"
+                  meshName="CubeTetra"
+                  polylineNodeCoords="{ {395651, 3271910, -1700.69  },
+                                        {395651, 3271910, -2000.69  } }"
+                  polylineSegmentConn="{ {0, 1} }"
+                  radius="0.1"
+                  numElementsPerSegment="20">
+        <Perforation name="injector7_perf1"
+                     distanceFromHead="300"/> 
+        <Perforation name="injector7_perf2"
+                     distanceFromHead="250"/> 
+        <Perforation name="injector7_perf3"
+                     distanceFromHead="200"/> 
+        <Perforation name="injector7_perf4"
+                     distanceFromHead="150"/> 
+        <Perforation name="injector7_perf5"
+                     distanceFromHead="100"/> 
+    </InternalWell>
+
+
+    <InternalWell name="well_injector8"
+                  wellRegionName="wellRegion8"
+                  wellControlsName="wellControls8"
+                  meshName="CubeTetra"
+                  polylineNodeCoords="{ {391256, 3272510, -1700.69  },
+                                        {391256, 3272510, -2000.69  } }"
+                  polylineSegmentConn="{ {0, 1} }"
+                  radius="0.1"
+                  numElementsPerSegment="20">
+        <Perforation name="injector8_perf1"
+                     distanceFromHead="300"/> 
+        <Perforation name="injector8_perf2"
+                     distanceFromHead="250"/> 
+        <Perforation name="injector8_perf3"
+                     distanceFromHead="200"/> 
+        <Perforation name="injector8_perf4"
+                     distanceFromHead="150"/> 
+        <Perforation name="injector8_perf5"
+                     distanceFromHead="100"/> 
+    </InternalWell>
+
+    <InternalWell name="well_injector9"
+                  wellRegionName="wellRegion9"
+                  wellControlsName="wellControls9"
+                  meshName="CubeTetra"
+                  polylineNodeCoords="{ {390237, 3270320, -1700.69  },
+                                        {390237, 3270320, -2000.69  } }"
+                  polylineSegmentConn="{ {0, 1} }"
+                  radius="0.1"
+                  numElementsPerSegment="20">
+        <Perforation name="injector9_perf1"
+                     distanceFromHead="300"/> 
+        <Perforation name="injector9_perf2"
+                     distanceFromHead="250"/> 
+        <Perforation name="injector9_perf3"
+                     distanceFromHead="200"/> 
+        <Perforation name="injector9_perf4"
+                     distanceFromHead="150"/> 
+        <Perforation name="injector9_perf5"
+                     distanceFromHead="100"/> 
+    </InternalWell>
+
+    <InternalWell name="well_injector10"
+                  wellRegionName="wellRegion10"
+                  wellControlsName="wellControls10"
+                  meshName="CubeTetra"
+                  polylineNodeCoords="{ {388461, 3267730, -1777  },
+                                        {388461, 3267730, -2081  } }"
+                  polylineSegmentConn="{ {0, 1} }"
+                  radius="0.1"
+                  numElementsPerSegment="20">
+        <Perforation name="injector10_perf1"
+                     distanceFromHead="300"/> 
+        <Perforation name="injector10_perf2"
+                     distanceFromHead="250"/> 
+        <Perforation name="injector10_perf3"
+                     distanceFromHead="200"/> 
+        <Perforation name="injector10_perf4"
+                     distanceFromHead="150"/> 
+        <Perforation name="injector10_perf5"
+                     distanceFromHead="100"/> 
+    </InternalWell>
+
+    <InternalWell name="well_injector11"
+                  wellRegionName="wellRegion11"
+                  wellControlsName="wellControls11"
+                  meshName="CubeTetra"
+                  polylineNodeCoords="{ { 394329, 3267380, -1777  },
+                                        { 394329, 3267380, -2081  } }"
+                  polylineSegmentConn="{ {0, 1} }"
+                  radius="0.1"
+                  numElementsPerSegment="20">
+        <Perforation name="injector11_perf1"
+                     distanceFromHead="300"/> 
+        <Perforation name="injector11_perf2"
+                     distanceFromHead="250"/> 
+        <Perforation name="injector11_perf3"
+                     distanceFromHead="200"/> 
+        <Perforation name="injector11_perf4"
+                     distanceFromHead="150"/> 
+        <Perforation name="injector11_perf5"
+                     distanceFromHead="100"/> 
+    </InternalWell>
+    
+    
+  </Mesh>
+
+  <Geometry>
+    <Box name="all" xMin="-1e9, -1e9, -1e9" xMax="1e9, 1e9, 1e9"/>
+  </Geometry>
+
+
+  <Events maxTime="1e7">
+    <!-- This event is applied every cycle, and overrides the
+    solver time-step request -->
+    <PeriodicEvent name="solverApplications"
+                   target="/Solvers/reservoirSystem" />
+
+    <!-- This event is applied every 1.0s.  The targetExactTimestep
+    flag allows this event to request a dt modification to match an
+    integer multiple of the timeFrequency. -->
+    <PeriodicEvent name="outputs"
+                   timeFrequency="1e5"
+                   targetExactTimestep="1"
+                   target="/Outputs/siloWellPump" />
+
+    <PeriodicEvent name="restarts"
+                   timeFrequency="1e99"
+                   targetExactTimestep="0"
+                   target="/Outputs/sidreRestart"
+                   endTime="-1"/>
+  </Events>
+
+
+  <NumericalMethods>
+    <FiniteVolume>
+      <TwoPointFluxApproximation name="fluidTPFA"
+                                 fieldName="pressure"
+                                 boundaryFieldName="boundaryFacePressure"
+                                 coefficientName="permeability"/>
+    </FiniteVolume>
+
+  </NumericalMethods>
+
+
+  <ElementRegions>
+    <CellElementRegion name="domain" cellBlocks="{0_TETRA}" materialList="{fluid1, rock, relperm}"/>
+
+    <WellElementRegion name="wellRegion1"
+                       materialList="{fluid1,relperm}"/> 
+    <WellElementRegion name="wellRegion2"
+                       materialList="{fluid1,relperm}"/> 
+    <WellElementRegion name="wellRegion3"
+                       materialList="{fluid1,relperm}"/> 
+    <WellElementRegion name="wellRegion4"
+                       materialList="{fluid1,relperm}"/> 
+    <WellElementRegion name="wellRegion5"
+                       materialList="{fluid1,relperm}"/> 
+    <WellElementRegion name="wellRegion6"
+                       materialList="{fluid1,relperm}"/> 
+    <WellElementRegion name="wellRegion7"
+                       materialList="{fluid1,relperm}"/>
+    <WellElementRegion name="wellRegion8"
+                       materialList="{fluid1,relperm}"/> 
+    <WellElementRegion name="wellRegion9"
+                       materialList="{fluid1,relperm}"/> 
+    <WellElementRegion name="wellRegion10"
+                       materialList="{fluid1,relperm}"/> 
+    <WellElementRegion name="wellRegion11"
+                       materialList="{fluid1,relperm}"/> 
+    
+    
+  </ElementRegions>
+
+  <Constitutive>
+    <MultiPhaseMultiComponentFluid name="fluid1"
+                                   phaseNames="{gas, water}"
+                                   componentNames="{co2, water}"
+                                   componentMolarWeight="{44e-3, 18e-3}"
+                                   phasePVTParaFiles="{pvtgas.txt, pvtliquid.txt}"
+                                   flashModelParaFile="co2flash.txt"/>
+    <PoreVolumeCompressibleSolid name="rock"
+                                 referencePressure="0.0"
+                                 compressibility="1e-9"/>
+    <BrooksCoreyRelativePermeability name="relperm"
+                                     phaseNames="{gas, water}"
+                                     phaseMinVolumeFraction="{0.05, 0.05}"
+                                     phaseRelPermExponent="{2.0, 2.0}"
+                                     phaseRelPermMaxValue="{1, 1}"/>
+  
+  </Constitutive>
+
+  <FieldSpecifications>
+
+    <FieldSpecification name="Permx1"
+               component="0"
+               initialCondition="1"  
+               setNames="{all}"
+               objectPath="ElementRegions/domain/0_TETRA"
+               fieldName="permeability"
+               scale="1.0e-12"/>
+
+    <FieldSpecification name="Permy1"
+               component="1"
+               initialCondition="1"
+               setNames="{all}"
+               objectPath="ElementRegions/domain/0_TETRA"
+               fieldName="permeability"
+               scale="1.0e-12"/>
+
+    <FieldSpecification name="Permz1"
+               component="2"
+               initialCondition="1"
+               setNames="{all}"
+               objectPath="ElementRegions/domain/0_TETRA"
+               fieldName="permeability"
+               scale="1.0e-12"/>
+
+    <FieldSpecification name="ReferencePorosity1"
+               initialCondition="1"
+               setNames="{all}"
+               objectPath="ElementRegions/domain/0_TETRA"
+               fieldName="referencePorosity"
+               scale="0.05"/>
+    
+    <FieldSpecification name="initialPressure"
+               initialCondition="1"
+               setNames="{all}"
+               objectPath="ElementRegions/domain/0_TETRA"
+               fieldName="pressure"
+               scale="1e6"/>
+
+    <FieldSpecification name="initialComposition_co2"
+               initialCondition="1"
+               setNames="{all}"
+               objectPath="ElementRegions/domain/0_TETRA"
+               fieldName="globalCompFraction"
+               component="0"
+               scale="0.005"/>
+
+    <FieldSpecification name="initialComposition_water"
+               initialCondition="1"
+               setNames="{all}"
+               objectPath="ElementRegions/domain/0_TETRA"
+               fieldName="globalCompFraction"
+               component="1"
+               scale="0.995"/>
+    
+  </FieldSpecifications>
+
+  <Functions>
+
+  </Functions>
+
+  <Outputs>
+      <Silo name="siloWellPump"/>
+      <Restart name="sidreRestart"/>
+  </Outputs>
+</Problem>

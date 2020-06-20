@@ -1,0 +1,238 @@
+<Problem>
+
+  <Solvers>
+
+    <CompositionalMultiphaseReservoir name="reservoirSystem"
+               flowSolverName="compositionalMultiphaseFlow"
+               wellSolverName="compositionalMultiphaseWell"
+               logLevel="1"
+               initialDt="10"
+               targetRegions="{domain,
+                               wellRegion1,
+                               wellRegion9}">
+      <NonlinearSolverParameters newtonTol="1.0e-5"
+                                 lineSearchAction="0"
+                                 maxTimeStepCuts="10"
+                                 newtonMaxIter="40"/>
+      <LinearSolverParameters solverType="direct"
+                              logLevel="0"/>
+    </CompositionalMultiphaseReservoir>
+    
+    <CompositionalMultiphaseFlow name="compositionalMultiphaseFlow"
+                                 targetRegions="{domain}"
+                                 discretization="fluidTPFA"
+                                 fluidNames="{fluid1}"
+                                 solidNames="{rock}"
+                                 relPermNames="{relperm}"
+                                 temperature="368.15"
+                                 useMass="1">
+    </CompositionalMultiphaseFlow>
+
+    <CompositionalMultiphaseWell name="compositionalMultiphaseWell"
+                                 targetRegions="{wellRegion1,
+                                                 wellRegion9}"
+                                 fluidNames="{fluid1}"
+                                 relPermNames="{relperm}"
+                                 wellTemperature="368.15"
+                                 logLevel="1"
+                                 useMass="1">
+        <WellControls name="wellControls1"
+                      type="injector"
+                      control="BHP"
+                      targetBHP="1e7"
+                      targetRate="1e9"
+                      injectionStream="{0.995, 0.005}"/>
+        <WellControls name="wellControls9"
+                      type="injector"
+                      control="BHP"
+                      targetBHP="1e7"
+                      targetRate="1e9"
+                      injectionStream="{0.995, 0.005}"/>
+    </CompositionalMultiphaseWell>
+
+    
+  </Solvers>
+  
+  <Mesh>
+    <PAMELAMeshGenerator name="CubeTetra"
+                         file="../mesh/piece_of_mesh.msh"/>
+
+    <InternalWell name="well_producer1"
+                  wellRegionName="wellRegion1"
+                  wellControlsName="wellControls1"
+                  meshName="CubeTetra"
+                  polylineNodeCoords="{ { 385318, 3260340, -1900 },
+                                        { 385318, 3260340, -2100 } }"
+                  polylineSegmentConn="{ {0, 1} }"
+                  radius="0.1"
+                  numElementsPerSegment="20">
+        <Perforation name="producer1_perf1"
+                     distanceFromHead="199"/> 
+        <Perforation name="producer1_perf2"
+                     distanceFromHead="150"/> 
+        <Perforation name="producer1_perf3"
+                     distanceFromHead="100"/> 
+        <Perforation name="producer1_perf4"
+                     distanceFromHead="50"/> 
+        <Perforation name="producer1_perf5"
+                     distanceFromHead="10"/> 
+    </InternalWell>
+
+    <InternalWell name="well_injector5"
+                  wellRegionName="wellRegion9"
+                  wellControlsName="wellControls9"
+                  meshName="CubeTetra"
+                  polylineNodeCoords="{ {386663, 3261450, -1900  },
+                                        {386663, 3261450, -2100  } }"
+                  polylineSegmentConn="{ {0, 1} }"
+                  radius="0.1"
+                  numElementsPerSegment="20">
+        <Perforation name="injector5_perf1"
+                     distanceFromHead="199"/> 
+        <Perforation name="injector5_perf2"
+                     distanceFromHead="150"/> 
+        <Perforation name="injector5_perf3"
+                     distanceFromHead="100"/> 
+        <Perforation name="injector5_perf4"
+                     distanceFromHead="50"/> 
+        <Perforation name="injector5_perf5"
+                     distanceFromHead="10"/> 
+    </InternalWell>
+    
+  </Mesh>
+
+  <Geometry>
+    <Box name="all" xMin="-1e9, -1e9, -1e9" xMax="1e9, 1e9, 1e9"/>
+  </Geometry>
+
+
+  <Events maxTime="8e5">
+    <!-- This event is applied every cycle, and overrides the
+    solver time-step request -->
+    <PeriodicEvent name="solverApplications"
+                   target="/Solvers/reservoirSystem" />
+
+    <!-- This event is applied every 1.0s.  The targetExactTimestep
+    flag allows this event to request a dt modification to match an
+    integer multiple of the timeFrequency. -->
+    <PeriodicEvent name="outputs"
+                   timeFrequency="5e4"
+                   targetExactTimestep="1"
+                   target="/Outputs/siloWellPump" />
+
+    <PeriodicEvent name="restarts"
+                   timeFrequency="1e99"
+                   targetExactTimestep="0"
+                   target="/Outputs/sidreRestart"
+                   endTime="-1"/>
+  </Events>
+
+
+  <NumericalMethods>
+    <FiniteVolume>
+      <TwoPointFluxApproximation name="fluidTPFA"
+                                 fieldName="pressure"
+                                 boundaryFieldName="boundaryFacePressure"
+                                 coefficientName="permeability"/>
+    </FiniteVolume>
+
+  </NumericalMethods>
+
+
+  <ElementRegions>
+    <CellElementRegion name="domain" cellBlocks="{0_TETRA}" materialList="{fluid1, rock, relperm}"/>
+
+    <WellElementRegion name="wellRegion1"
+                       materialList="{fluid1,relperm}"/> 
+    <WellElementRegion name="wellRegion9"
+                       materialList="{fluid1,relperm}"/> 
+    
+    
+  </ElementRegions>
+
+  <Constitutive>
+    <MultiPhaseMultiComponentFluid name="fluid1"
+                                   phaseNames="{gas, water}"
+                                   componentNames="{co2, water}"
+                                   componentMolarWeight="{44e-3, 18e-3}"
+                                   phasePVTParaFiles="{pvtgas.txt, pvtliquid.txt}"
+                                   flashModelParaFile="co2flash.txt"/>
+    <PoreVolumeCompressibleSolid name="rock"
+                                 referencePressure="0.0"
+                                 compressibility="1e-9"/>
+    <BrooksCoreyRelativePermeability name="relperm"
+                                     phaseNames="{gas, water}"
+                                     phaseMinVolumeFraction="{0.05, 0.05}"
+                                     phaseRelPermExponent="{2.0, 2.0}"
+                                     phaseRelPermMaxValue="{1, 1}"/>
+  
+  </Constitutive>
+
+  <FieldSpecifications>
+
+    <FieldSpecification name="Permx1"
+               component="0"
+               initialCondition="1"  
+               setNames="{all}"
+               objectPath="ElementRegions/domain/0_TETRA"
+               fieldName="permeability"
+               scale="1.0e-12"/>
+
+    <FieldSpecification name="Permy1"
+               component="1"
+               initialCondition="1"
+               setNames="{all}"
+               objectPath="ElementRegions/domain/0_TETRA"
+               fieldName="permeability"
+               scale="1.0e-12"/>
+
+    <FieldSpecification name="Permz1"
+               component="2"
+               initialCondition="1"
+               setNames="{all}"
+               objectPath="ElementRegions/domain/0_TETRA"
+               fieldName="permeability"
+               scale="1.0e-12"/>
+
+    <FieldSpecification name="ReferencePorosity1"
+               initialCondition="1"
+               setNames="{all}"
+               objectPath="ElementRegions/domain/0_TETRA"
+               fieldName="referencePorosity"
+               scale="0.05"/>
+    
+    <FieldSpecification name="initialPressure"
+               initialCondition="1"
+               setNames="{all}"
+               objectPath="ElementRegions/domain/0_TETRA"
+               fieldName="pressure"
+               scale="1e6"/>
+
+    <FieldSpecification name="initialComposition_co2"
+               initialCondition="1"
+               setNames="{all}"
+               objectPath="ElementRegions/domain/0_TETRA"
+               fieldName="globalCompFraction"
+               component="0"
+               scale="0.005"/>
+
+    <FieldSpecification name="initialComposition_water"
+               initialCondition="1"
+               setNames="{all}"
+               objectPath="ElementRegions/domain/0_TETRA"
+               fieldName="globalCompFraction"
+               component="1"
+               scale="0.995"/>
+    
+    
+  </FieldSpecifications>
+
+  <Functions>
+
+  </Functions>
+
+  <Outputs>
+      <Silo name="siloWellPump"/>
+      <Restart name="sidreRestart"/>
+  </Outputs>
+</Problem>
