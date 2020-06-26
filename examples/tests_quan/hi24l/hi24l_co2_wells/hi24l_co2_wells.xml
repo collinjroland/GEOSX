@@ -383,11 +383,11 @@
     <!-- This event is applied every 1.0s.  The targetExactTimestep
     flag allows this event to request a dt modification to match an
     integer multiple of the timeFrequency. -->
-    <PeriodicEvent name="outputs"
+    <PeriodicEvent name="vtk"
                    timeFrequency="1e5"
                    targetExactTimestep="1"
-                   target="/Outputs/siloWellPump" />
-
+                   target="/Outputs/vtkOutput" />
+    
     <PeriodicEvent name="restarts"
                    timeFrequency="1e99"
                    targetExactTimestep="0"
@@ -517,7 +517,7 @@
   </Functions>
 
   <Outputs>
-      <Silo name="siloWellPump"/>
+      <VTK name="vtkOutput"/>          
       <Restart name="sidreRestart"/>
   </Outputs>
 </Problem>
