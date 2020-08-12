@@ -14,13 +14,11 @@
 
 #pragma once
 
-/// System includes
-#include <ostream>
-#include <istream>
-
 /**
  * @file TimeIntegrationOption.hpp
  */
+
+#include "common/Enum.hpp"
 
 namespace geosx
 {
@@ -37,68 +35,22 @@ enum class TimeIntegrationOption : int
   ExplicitDynamic //!< ExplicitDynamic
 };
 
+///@cond DO_NOT_DOCUMENT
+namespace TimeIntegrationOptionStrings
+{
+char constexpr QuasiStatic[] = "QuasiStatic";
+char constexpr ImplicitDynamic[] = "ImplicitDynamic";
+char constexpr ExplicitDynamic[] = "ExplicitDynamic";
+}
+///@endcond
+
 /**
- * @brief Function to get a TimeIntegrationOption enum from an int
- * @param val int that represents the TimeIntegrationOption
- * @return The TimeIntegrationOption that corresponds to the input
+ * @brief Type used to handle TimeIntegrationOption input values.
  */
-inline
-TimeIntegrationOption toTimeIntegrationOption( std::string const & val )
-{
-  if( val == "TimeIntegrationOption::QuasiStatic" || val == "QuasiStatic" )
-  {
-    return TimeIntegrationOption::QuasiStatic;
-  }
-  if( val == "TimeIntegrationOption::ImplicitDynamic" || val == "ImplicitDynamic" )
-  {
-    return TimeIntegrationOption::ImplicitDynamic;
-  }
-  if( val == "TimeIntegrationOption::ExplicitDynamic" || val == "ExplicitDynamic" )
-  {
-    return TimeIntegrationOption::ExplicitDynamic;
-  }
-  else
-  {
-    GEOSX_ERROR( "Could not parse " << val << " into a TimeIntegrationOption." );
-    return TimeIntegrationOption::QuasiStatic;
-  }
-}
-
-inline
-std::istream & operator>>( std::istream & is, TimeIntegrationOption & option )
-{
-  std::string value;
-  is >> value;
-  option = toTimeIntegrationOption( value );
-  return is;
-}
-
-inline
-std::ostream & operator<<( std::ostream & os, TimeIntegrationOption const & option )
-{
-  switch( option )
-  {
-    case TimeIntegrationOption::QuasiStatic:
-    {
-      os << "TimeIntegrationOption::QuasiStatic";
-      return os;
-    }
-    case TimeIntegrationOption::ImplicitDynamic:
-    {
-      os << "TimeIntegrationOption::ImplicitDynamic";
-      return os;
-    }
-    case TimeIntegrationOption::ExplicitDynamic:
-    {
-      os << "TimeIntegrationOption::ExplicitDynamic";
-      return os;
-    }
-    default:
-    {
-      GEOSX_ERROR( "TimeIntegrationOption " << static_cast< int >( option ) << " not recognized." );
-      return os;
-    }
-  }
-}
+struct TimeIntegrationOptionInput : public Enum< TimeIntegrationOption,
+                                                 TimeIntegrationOptionStrings::QuasiStatic,
+                                                 TimeIntegrationOptionStrings::ImplicitDynamic,
+                                                 TimeIntegrationOptionStrings::ExplicitDynamic >
+{ using Enum::Enum; };
 
 } /// namespace geosx

@@ -273,7 +273,7 @@ protected:
   real64 m_newmarkBeta;
   real64 m_massDamping;
   real64 m_stiffnessDamping;
-  TimeIntegrationOption m_timeIntegrationOption;
+  TimeIntegrationOptionInput m_timeIntegrationOption;
   integer m_useVelocityEstimateForQS;
   real64 m_maxForce = 0.0;
   integer m_maxNumResolves;

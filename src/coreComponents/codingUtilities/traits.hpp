@@ -85,6 +85,13 @@ HAS_MEMBER_FUNCTION_NO_RTYPE( resize, 0 );
 HAS_MEMBER_FUNCTION_NO_RTYPE( reserve, localIndex( 55 ) );
 
 /**
+ * @brief Defines a static constexpr bool HasMemberFunction_typeRegex< @p CLASS >
+ *        that is True iff the method @p CLASS ::typeRegex() exists and returns a string.
+ * @tparam CLASS The type to test.
+ */
+HAS_MEMBER_FUNCTION( typeRegex, string, );
+
+/**
  * @brief Defines a static constexpr bool HasMemberFunction_toView< @p CLASS >
  *        that is true iff the method @p CLASS ::toView() exists.
  * @tparam CLASS The type to test.

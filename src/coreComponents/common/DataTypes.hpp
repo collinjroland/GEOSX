@@ -758,7 +758,6 @@ private:
       {"path_array", constructArrayRegex( rs, 1 )},
       {"mapPair", rs},
       {"mapPair_array", constructArrayRegex( rs, 1 )},
-      {"geosx_TimeIntegrationOption", rs},
       {"geosx_dataRepository_PlotLevel", ri}
     };
   };
