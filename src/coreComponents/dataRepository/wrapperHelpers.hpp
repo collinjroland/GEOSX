@@ -240,20 +240,6 @@ move( T & GEOSX_UNUSED_PARAM( value ),
       bool const GEOSX_UNUSED_PARAM( touch ) )
 {}
 
-template< typename T >
-std::enable_if_t< traits::HasMemberFunction_typeRegex< T >, string >
-typeRegex( T & value )
-{
-  return value.typeRegex();
-}
-
-template< typename T >
-std::enable_if_t< !traits::HasMemberFunction_typeRegex< T >, string >
-typeRegex( T & GEOSX_UNUSED_PARAM( value ) )
-{
-  return string();
-}
-
 // This is for an object that needs to be packed.
 template< typename T >
 std::enable_if_t< !bufferOps::can_memcpy< typename traits::Pointer< T > > >

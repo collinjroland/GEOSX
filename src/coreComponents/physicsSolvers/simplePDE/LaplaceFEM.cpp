@@ -54,13 +54,13 @@ LaplaceFEM::LaplaceFEM( const std::string & name,
   m_fieldName( "primaryField" ),
   m_timeIntegrationOption( timeIntegrationOption::ImplicitTransient )
 {
-  registerWrapper< string >( laplaceFEMViewKeys.timeIntegrationOption.Key())->
+  registerWrapper( laplaceFEMViewKeys.timeIntegrationOption.Key(), &m_timeIntegrationOption )->
     setInputFlag( InputFlags::REQUIRED )->
-    setDescription( "option for default time integration method" );
+    setDescription( "Time integration method. Options are:\n* " + EnumStrings< timeIntegrationOption >::concat( "\n* " ) );
 
-  registerWrapper< string >( laplaceFEMViewKeys.fieldVarName.Key(), &m_fieldName )->
+  registerWrapper( laplaceFEMViewKeys.fieldVarName.Key(), &m_fieldName )->
     setInputFlag( InputFlags::REQUIRED )->
-    setDescription( "name of field variable" );
+    setDescription( "Name of field variable" );
 }
 //END_SPHINX_INCLUDE_01
 
@@ -84,32 +84,6 @@ void LaplaceFEM::RegisterDataOnMesh( Group * const MeshBodies )
   }
 }
 //END_SPHINX_INCLUDE_02
-
-//START_SPHINX_INCLUDE_03
-void LaplaceFEM::PostProcessInput()
-{
-  SolverBase::PostProcessInput();
-
-  string tiOption = this->getReference< string >( laplaceFEMViewKeys.timeIntegrationOption );
-
-  if( tiOption == "SteadyState" )
-  {
-    this->m_timeIntegrationOption = timeIntegrationOption::SteadyState;
-  }
-  else if( tiOption == "ImplicitTransient" )
-  {
-    this->m_timeIntegrationOption = timeIntegrationOption::ImplicitTransient;
-  }
-  else if( tiOption == "ExplicitTransient" )
-  {
-    this->m_timeIntegrationOption = timeIntegrationOption::ExplicitTransient;
-  }
-  else
-  {
-    GEOSX_ERROR( "invalid time integration option" );
-  }
-}
-//END_SPHINX_INCLUDE_03
 
 real64 LaplaceFEM::SolverStep( real64 const & time_n,
                                real64 const & dt,

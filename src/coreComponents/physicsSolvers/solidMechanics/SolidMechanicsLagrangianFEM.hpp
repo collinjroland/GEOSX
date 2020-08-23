@@ -19,6 +19,7 @@
 #ifndef GEOSX_PHYSICSSOLVERS_SOLIDMECHANICS_SOLIDMECHANICSLAGRANGIANFEM_HPP_
 #define GEOSX_PHYSICSSOLVERS_SOLIDMECHANICS_SOLIDMECHANICSLAGRANGIANFEM_HPP_
 
+#include "common/Enum.hpp"
 #include "common/TimingMacros.hpp"
 #include "mesh/MeshForLoopInterface.hpp"
 #include "mpiCommunications/CommunicationTools.hpp"
@@ -37,6 +38,20 @@ class Group;
 class FieldSpecificationBase;
 class FiniteElementBase;
 class DomainPartition;
+
+/**
+ * @enum TimeIntegrationOption
+ *
+ * The options for time integration
+ */
+enum class TimeIntegrationOption : int
+{
+  QuasiStatic,    //!< QuasiStatic
+  ImplicitDynamic,//!< ImplicitDynamic
+  ExplicitDynamic //!< ExplicitDynamic
+};
+
+ENUM_STRINGS( TimeIntegrationOption, "QuasiStatic", "ImplicitDynamic", "ExplicitDynamic" )
 
 /**
  * @class SolidMechanicsLagrangianFEM
@@ -273,7 +288,7 @@ protected:
   real64 m_newmarkBeta;
   real64 m_massDamping;
   real64 m_stiffnessDamping;
-  TimeIntegrationOptionInput m_timeIntegrationOption;
+  TimeIntegrationOption m_timeIntegrationOption;
   integer m_useVelocityEstimateForQS;
   real64 m_maxForce = 0.0;
   integer m_maxNumResolves;

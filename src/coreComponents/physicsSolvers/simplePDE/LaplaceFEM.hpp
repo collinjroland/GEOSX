@@ -15,6 +15,7 @@
 #ifndef GEOSX_PHYSICSSOLVERS_SIMPLEPDE_LAPLACE_FEM_HPP_
 #define GEOSX_PHYSICSSOLVERS_SIMPLEPDE_LAPLACE_FEM_HPP_
 
+#include "common/Enum.hpp"
 #include "physicsSolvers/SolverBase.hpp"
 #include "managers/FieldSpecification/FieldSpecificationManager.hpp"
 #include "linearAlgebra/interfaces/InterfaceTypes.hpp"
@@ -141,16 +142,14 @@ public:
   } laplaceFEMViewKeys;
   //END_SPHINX_INCLUDE_04
 
-protected:
-
-  virtual void PostProcessInput() override final;
-
 private:
 
   string m_fieldName;
   timeIntegrationOption m_timeIntegrationOption;
 
 };
+
+ENUM_STRINGS( LaplaceFEM::timeIntegrationOption, "SteadyState", "ImplicitTransient", "ExplicitTransient" )
 
 } /* namespace geosx */
 

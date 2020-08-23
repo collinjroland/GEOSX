@@ -39,10 +39,11 @@ template< typename T >
 struct is_defaultable
 {
   /// attribute to set what type is able to contain a default value
-  static constexpr bool value = std::is_trivial< T > ::value ||
+  static constexpr bool value = std::is_arithmetic< T > ::value ||
                                 std::is_same< T, string >::value ||
                                 std::is_same< T, Path >::value ||
-                                traits::is_tensorT< T >;
+                                traits::is_tensorT< T > ||
+                                std::is_enum< T >::value;
 };
 
 /**

@@ -170,16 +170,6 @@ for all nodes in the sub group:
 
 .. literalinclude:: ../../../../coreComponents/physicsSolvers/simplePDE/LaplaceFEM.cpp
    :language: c++
-   :start-after: //START_SPHINX_INCLUDE_03
-   :end-before: //END_SPHINX_INCLUDE_03
-
-``PostProcessInput()`` will ensure all dispatches and assignments of all read values from the base class defined
-to the deepest derived class. In the base class *BaseSolver*, it will set the gravity vector value and the linear solver parameters.
-In *LaplaceFEM* implementation, it will assign the ``m_timeIntegrationOption``
-to the read value and throw a runtime error if it not among the `enum` values.
-
-.. literalinclude:: ../../../../coreComponents/physicsSolvers/simplePDE/LaplaceFEM.cpp
-   :language: c++
    :start-after: //START_SPHINX_INCLUDE_04
    :end-before: //END_SPHINX_INCLUDE_04
 

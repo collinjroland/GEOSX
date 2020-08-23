@@ -481,7 +481,7 @@ public:
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////
   virtual string typeRegex() const override
-  { return wrapperHelpers::typeRegex( reference() ); }
+  { return TypeRegex< T >::get(); }
 
   ///@}
 
